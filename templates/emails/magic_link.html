@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                         sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+        .btn {
+            display: inline-block;
+            background: #1a1a2e;
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .footer {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand">🔒 VPN Portal</div>
+
+        <p>Hi {{ vpnuser.full_name }},</p>
+
+        <p>
+            Click the button below to log into the VPN portal.
+            This link expires in <strong>30 minutes</strong>.
+        </p>
+
+        <a href="{{ login_url }}" class="btn">
+            Log Into VPN Portal
+        </a>
+
+        <p class="footer">
+            If you did not request this link, you can safely ignore
+            this email. The link will expire automatically.
+            <br><br>
+            Or copy this URL into your browser:<br>
+            <small>{{ login_url }}</small>
+        </p>
+    </div>
+</body>
+</html>

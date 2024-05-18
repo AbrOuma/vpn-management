@@ -1,0 +1,34 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+.env
+db.sqlite3
+staticfiles/
+media/
+
+# SSH keys — NEVER commit these
+gcp_key
+gcp_key.pub
+railway_gcp_key
+railway_gcp_key.pub
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+#documentation
+
+DEPLOY.md

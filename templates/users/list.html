@@ -1,0 +1,98 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Users — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Users</h4>
+        <small class="text-muted">VPN end-users and their devices</small>
+    </div>
+    <a href="{% url 'users:add' %}" class="btn btn-dark">
+        <i class="bi bi-plus-lg me-1"></i> Add User
+    </a>
+</div>
+
+<!-- Search bar -->
+<div class="mb-3">
+    <form method="get">
+        <div class="input-group" style="max-width: 400px;">
+            <input type="text"
+                   name="q"
+                   class="form-control"
+                   placeholder="Search by name or email..."
+                   value="{{ request.GET.q }}">
+            <button class="btn btn-outline-secondary" type="submit">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Users table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Devices</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vpnuser in users %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="fw-semibold">{{ vpnuser.full_name }}</div>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ vpnuser.email }}</small>
+                    </td>
+                    <td>
+                        {% if vpnuser.department %}
+                            {{ vpnuser.department }}
+                        {% else %}
+                            <span class="text-muted fst-italic">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            {{ vpnuser.active_device_count }} active
+                        </span>
+                    </td>
+                    <td>
+                        {% if vpnuser.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                        {% elif vpnuser.status == 'suspended' %}
+                            <span class="badge bg-warning text-dark">Suspended</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Deleted</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'users:detail' vpnuser.pk %}"
+                           class="btn btn-sm btn-outline-secondary">
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="bi bi-people fs-1 d-block mb-2"></i>
+                        No users yet.
+                        <a href="{% url 'users:add' %}">Add your first user</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

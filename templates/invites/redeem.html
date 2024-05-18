@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Connect Your Device — WireGuard VPN{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <i class="bi bi-shield-lock"
+                   style="font-size: 3rem; color: #1a1a2e;"></i>
+                <h3 class="fw-bold mt-2">Connect to the VPN</h3>
+                <p class="text-muted">
+                    Follow the steps below to connect
+                    <strong>{{ device.name }}</strong> to the VPN.
+                </p>
+            </div>
+
+            <!-- Step 1 — Install WireGuard -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <span class="badge bg-dark me-2">1</span>
+                        Install WireGuard
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <a href="https://apps.apple.com/app/wireguard/id1441195209"
+                               target="_blank"
+                               class="btn btn-outline-secondary w-100 btn-sm">
+                                <i class="bi bi-apple me-1"></i> iOS
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="https://play.google.com/store/apps/details?id=com.wireguard.android"
+                               target="_blank"
+                               class="btn btn-outline-secondary w-100 btn-sm">
+                                <i class="bi bi-android me-1"></i> Android
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="https://download.wireguard.com/windows-client/wireguard-installer.exe"
+                               target="_blank"
+                               class="btn btn-outline-secondary w-100 btn-sm">
+                                <i class="bi bi-windows me-1"></i> Windows
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="https://www.wireguard.com/install/"
+                               target="_blank"
+                               class="btn btn-outline-secondary w-100 btn-sm">
+                                <i class="bi bi-apple me-1"></i> macOS
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 — Add config -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <span class="badge bg-dark me-2">2</span>
+                        Add your configuration
+                    </h6>
+
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="configTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#qr-tab">
+                                <i class="bi bi-qr-code me-1"></i>
+                                QR Code
+                                <small class="text-muted">(phone)</small>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#download-tab">
+                                <i class="bi bi-download me-1"></i>
+                                Download File
+                                <small class="text-muted">(desktop)</small>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+
+                        <!-- QR code tab -->
+                        <div class="tab-pane fade show active" id="qr-tab">
+                            <div class="text-center py-3">
+                                <img src="{{ qr_code }}"
+                                     alt="WireGuard QR Code"
+                                     style="max-width: 260px;"
+                                     class="img-fluid border rounded p-2">
+                                <p class="text-muted small mt-3">
+                                    Open WireGuard on your phone →
+                                    tap the + button →
+                                    choose "Scan QR Code"
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Download tab -->
+                        <div class="tab-pane fade" id="download-tab">
+                            <div class="text-center py-3">
+                                <a href="{% url 'invites:download' invite.token %}"
+                                   class="btn btn-dark btn-lg">
+                                    <i class="bi bi-download me-2"></i>
+                                    Download Config File
+                                </a>
+                                <p class="text-muted small mt-3">
+                                    Open WireGuard on your desktop →
+                                    click "Import tunnel(s) from file" →
+                                    select the downloaded file
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 — Activate -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-2">
+                        <span class="badge bg-dark me-2">3</span>
+                        Activate the tunnel
+                    </h6>
+                    <p class="text-muted small mb-0">
+                        In WireGuard, toggle the switch next to your new
+                        tunnel to connect. You should see your status
+                        change to <strong>Active</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Device info -->
+            <div class="card border-0 bg-light">
+                <div class="card-body p-3">
+                    <small class="text-muted">
+                        <strong>Device:</strong> {{ device.name }} &nbsp;|&nbsp;
+                        <strong>IP:</strong>
+                        <code>{{ device.ip_address }}</code>
+                    </small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

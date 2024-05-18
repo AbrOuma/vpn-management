@@ -1,0 +1,97 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Edit {{ device.name }} — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'devices:detail' device.pk %}"
+       class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Edit Device</h4>
+        <small class="text-muted">{{ device.name }}</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Save Changes
+                        </button>
+                        <a href="{% url 'devices:detail' device.pk %}"
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body p-4">
+                <h6 class="fw-bold">What you can and cannot change</h6>
+                <ul class="text-muted small mt-3">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        <strong>Name</strong> — rename the device freely
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        <strong>Device type</strong> — laptop, phone, tablet etc
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        <strong>User</strong> — reassign to a different user
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-x-circle text-danger me-1"></i>
+                        <strong>IP address</strong> — locked, cannot be changed
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-x-circle text-danger me-1"></i>
+                        <strong>Public key</strong> — locked, cannot be changed
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Read-only device info -->
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">Connection Details (read-only)</h6>
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="text-muted">IP Address</td>
+                        <td><code>{{ device.ip_address }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Public Key</td>
+                        <td>
+                            <small class="font-monospace text-muted">
+                                {{ device.public_key|truncatechars:20 }}
+                            </small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status</td>
+                        <td>{{ device.get_status_display }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

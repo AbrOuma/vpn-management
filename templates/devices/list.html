@@ -1,0 +1,251 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Devices — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Devices</h4>
+        <small class="text-muted">All WireGuard peers grouped by server</small>
+    </div>
+    <a href="{% url 'devices:add' %}" class="btn btn-dark">
+        <i class="bi bi-plus-lg me-1"></i> Add Device
+    </a>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total</div>
+                <div class="fs-4 fw-bold">{{ total_devices }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Online</div>
+                <div class="fs-4 fw-bold text-success">{{ online_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Active</div>
+                <div class="fs-4 fw-bold">{{ active_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Disabled</div>
+                <div class="fs-4 fw-bold text-warning">{{ disabled_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instant search -->
+<div class="mb-4">
+    <div class="input-group" style="max-width: 420px;">
+        <span class="input-group-text bg-white border-end-0">
+            <i class="bi bi-search text-muted"></i>
+        </span>
+        <input type="text"
+               id="deviceSearch"
+               class="form-control border-start-0 ps-0"
+               placeholder="Search name, user, IP, type...">
+    </div>
+    <small class="text-muted mt-1 d-none" id="searchCount"></small>
+</div>
+
+<!-- No results message -->
+<div id="noResults" class="d-none text-center text-muted py-5">
+    <i class="bi bi-search fs-1 d-block mb-2"></i>
+    No devices match your search.
+</div>
+
+<!-- Server sections -->
+{% for server in servers %}
+<div class="mb-3 server-section">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+
+            <button class="btn w-100 text-start p-3 d-flex justify-content-between align-items-center"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#server-{{ server.pk }}"
+                    aria-expanded="false">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-server text-muted"></i>
+                    <div>
+                        <span class="fw-bold">{{ server.name }}</span>
+                        <small class="text-muted ms-2">{{ server.ssh_host }}</small>
+                    </div>
+                    <span class="badge bg-secondary" id="badge-{{ server.pk }}">
+                        {{ server.devices.count }}
+                    </span>
+                </div>
+                <i class="bi bi-chevron-down text-muted"></i>
+            </button>
+
+            <div class="collapse" id="server-{{ server.pk }}">
+                <div class="border-top">
+                    {% with devices=server.devices.all %}
+                    {% if devices %}
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Device</th>
+                                <th>User</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr class="device-row"
+                                data-name="{{ device.name|lower }}"
+                                data-user="{{ device.user.full_name|lower|default:'' }}"
+                                data-ip="{{ device.ip_address|lower }}"
+                                data-type="{{ device.get_device_type_display|lower }}">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if device.device_type == 'laptop' %}
+                                            <i class="bi bi-laptop text-muted"></i>
+                                        {% elif device.device_type == 'phone' %}
+                                            <i class="bi bi-phone text-muted"></i>
+                                        {% elif device.device_type == 'tablet' %}
+                                            <i class="bi bi-tablet text-muted"></i>
+                                        {% elif device.device_type == 'server' %}
+                                            <i class="bi bi-server text-muted"></i>
+                                        {% else %}
+                                            <i class="bi bi-display text-muted"></i>
+                                        {% endif %}
+                                        <div>
+                                            <div class="fw-semibold">{{ device.name }}</div>
+                                            <small class="text-muted">
+                                                {{ device.get_device_type_display }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if device.user %}
+                                        <a href="{% url 'users:detail' device.user.pk %}"
+                                           class="text-decoration-none">
+                                            {{ device.user.full_name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted fst-italic">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td><code>{{ device.ip_address }}</code></td>
+                                <td>
+                                    {% if device.status == 'active' %}
+                                        {% if device.ip_address in online_ips %}
+                                            <span class="badge bg-success">Online</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Active</span>
+                                        {% endif %}
+                                    {% elif device.status == 'disabled' %}
+                                        <span class="badge bg-warning text-dark">Disabled</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Revoked</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{% url 'devices:detail' device.pk %}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox me-2"></i>
+                        No devices on this server.
+                        <a href="{% url 'devices:add' %}">Add one</a>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-server fs-1 d-block mb-3"></i>
+        No servers configured yet.
+        <a href="{% url 'server:add' %}">Add a server first</a>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+(function () {
+    const input     = document.getElementById('deviceSearch');
+    const countEl   = document.getElementById('searchCount');
+    const noResults = document.getElementById('noResults');
+
+    input.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+
+        if (!q) {
+            document.querySelectorAll('.device-row').forEach(r => r.style.display = '');
+            document.querySelectorAll('.server-section').forEach(s => s.style.display = '');
+            countEl.classList.add('d-none');
+            noResults.classList.add('d-none');
+            return;
+        }
+
+        let totalVisible = 0;
+
+        document.querySelectorAll('.server-section').forEach(section => {
+            const rows    = section.querySelectorAll('.device-row');
+            const collapse = section.querySelector('.collapse');
+            const badge   = section.querySelector('[id^="badge-"]');
+            let sectionVisible = 0;
+
+            rows.forEach(row => {
+                const match =
+                    (row.dataset.name || '').includes(q) ||
+                    (row.dataset.user || '').includes(q) ||
+                    (row.dataset.ip   || '').includes(q) ||
+                    (row.dataset.type || '').includes(q);
+
+                row.style.display = match ? '' : 'none';
+                if (match) sectionVisible++;
+            });
+
+            if (sectionVisible > 0) {
+                section.style.display = '';
+                collapse.classList.add('show');
+                totalVisible += sectionVisible;
+            } else {
+                section.style.display = 'none';
+            }
+
+            if (badge) badge.textContent = sectionVisible;
+        });
+
+        countEl.textContent = `${totalVisible} device${totalVisible !== 1 ? 's' : ''} found`;
+        countEl.classList.remove('d-none');
+        noResults.classList.toggle('d-none', totalVisible > 0);
+    });
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}{{ device.name }} — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'devices:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">{{ device.name }}</h4>
+        <small class="text-muted">{{ device.get_device_type_display }}</small>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Device info -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">Device Information</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">Name</td>
+                        <td>{{ device.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Owner</td>
+                        <td>
+                            {% if device.user %}
+                                <a href="{% url 'users:detail' device.user.pk %}">
+                                    {{ device.user.full_name }}
+                                </a>
+                            {% else %}
+                                <span class="fst-italic text-muted">
+                                    Unassigned
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">IP Address</td>
+                        <td><code>{{ device.ip_address }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status</td>
+                        <td>
+                            {% if device.status == 'active' %}
+                                {% if device.is_online %}
+                                    <span class="badge bg-success">Online</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Active</span>
+                                {% endif %}
+                            {% elif device.status == 'disabled' %}
+                                <span class="badge bg-warning text-dark">
+                                    Disabled
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">Revoked</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Last Handshake</td>
+                        <td>
+                            {% if device.last_handshake %}
+                                {{ device.last_handshake|timesince }} ago
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Created</td>
+                        <td>{{ device.created_at|date:"d M Y" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">Actions</h6>
+                <div class="d-grid gap-2">
+
+                    <a href="{% url 'devices:edit' device.pk %}"
+                       class="btn btn-outline-dark">
+                        <i class="bi bi-pencil me-2"></i>Edit Device
+                    </a>
+
+                    {% if device.status == 'active' %}
+                        <button type="button"
+                                class="btn btn-warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#disableModal">
+                            <i class="bi bi-pause-circle me-2"></i>
+                            Disable Device
+                        </button>
+                    {% elif device.status == 'disabled' %}
+                        <button type="button"
+                                class="btn btn-success"
+                                data-bs-toggle="modal"
+                                data-bs-target="#enableModal">
+                            <i class="bi bi-play-circle me-2"></i>
+                            Enable Device
+                        </button>
+                    {% endif %}
+
+                    {% if device.status != 'revoked' %}
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#revokeModal">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Revoke Device
+                        </button>
+                    {% endif %}
+
+                    <button type="button"
+                            class="btn btn-danger"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteModal">
+                        <i class="bi bi-trash me-2"></i>
+                        Delete Device
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- Modals -->
+<!-- ============================================================ -->
+
+<!-- Enable Modal -->
+<div class="modal fade" id="enableModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Enable Device</h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Enable <strong>{{ device.name }}</strong>?</p>
+                <p class="text-muted small mb-0">
+                    The device will be re-added to the VPN server
+                    and the user will be able to connect again.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form method="post"
+                      action="{% url 'devices:enable' device.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-play-circle me-1"></i>Enable
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disable Modal -->
+<div class="modal fade" id="disableModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Disable Device</h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Disable <strong>{{ device.name }}</strong>?</p>
+                <p class="text-muted small mb-0">
+                    The user will lose VPN access immediately.
+                    You can re-enable it at any time.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form method="post"
+                      action="{% url 'devices:disable' device.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-pause-circle me-1"></i>Disable
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revoke Modal -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    Revoke Device
+                </h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Revoke <strong>{{ device.name }}</strong>?</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Revoking is permanent. The device will be blocked
+                    but stays in the database for records.
+                    To fully remove it use Delete instead.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form method="post"
+                      action="{% url 'devices:revoke' device.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Revoke
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    Delete Device
+                </h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Permanently delete
+                    <strong>{{ device.name }}</strong>?
+                </p>
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-trash me-2"></i>
+                    This will delete the device from the database,
+                    remove it from the VPN server, and return
+                    IP <code>{{ device.ip_address }}</code>
+                    to the pool. This cannot be undone.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form method="post"
+                      action="{% url 'devices:delete' device.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>
+                        Yes, Delete Permanently
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

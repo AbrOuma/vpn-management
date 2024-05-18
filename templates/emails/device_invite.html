@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                         sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+        .btn {
+            display: inline-block;
+            background: #1a1a2e;
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+        .footer {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand">🔒 VPN Access</div>
+
+        <p>Hi {{ vpnuser.full_name }},</p>
+
+        <p>
+            You have been granted VPN access for
+            <strong>{{ device.name }}</strong>.
+            Click the button below to set up your device.
+        </p>
+
+        <a href="{{ invite_url }}" class="btn">
+            Set Up My VPN Device
+        </a>
+
+        <div class="info-box">
+            <strong>Device:</strong> {{ device.name }}<br>
+            <strong>Your VPN IP:</strong> {{ device.ip_address }}<br>
+            <strong>Link expires:</strong> 48 hours
+        </div>
+
+        <p class="footer">
+            This link can only be used once. If it expires, contact
+            your network administrator for a new one.
+            <br><br>
+            Or copy this URL into your browser:<br>
+            <small>{{ invite_url }}</small>
+        </p>
+    </div>
+</body>
+</html>

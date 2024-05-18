@@ -1,0 +1,40 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add User — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'users:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Add User</h4>
+        <small class="text-muted">Create a new VPN user</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-plus-lg me-1"></i> Create User
+                        </button>
+                        <a href="{% url 'users:list' %}"
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

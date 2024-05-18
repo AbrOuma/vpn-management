@@ -1,0 +1,165 @@
+import logging
+from .ssh_client import run_command, write_remote_script
+
+logger = logging.getLogger('wireguard')
+
+
+def wg_show(interface: str = 'wg0') -> str:
+    out, _ = run_command(f'sudo wg show {interface}')
+    return out
+
+
+def wg_show_dump(interface: str = 'wg0') -> str:
+    out, _ = run_command(f'sudo wg show {interface} dump')
+    return out
+
+
+def wg_is_running(interface: str = 'wg0') -> bool:
+    try:
+        wg_show(interface)
+        return True
+    except Exception:
+        return False
+
+
+def read_server_config(interface: str = 'wg0') -> str:
+    """Read wg0.conf — read only, never writes."""
+    out, _ = run_command(f'sudo cat /etc/wireguard/{interface}.conf')
+    return out
+
+
+def wg_down(interface: str = 'wg0') -> None:
+    run_command(f'sudo wg-quick down {interface}')
+    logger.info('WireGuard %s down', interface)
+
+
+def wg_up(interface: str = 'wg0') -> None:
+    run_command(f'sudo wg-quick up {interface}')
+    logger.info('WireGuard %s up', interface)
+
+
+def build_interface_section() -> str:
+    """
+    Build the [Interface] section from the active ServerConfig.
+    This always comes from the database — never from the file.
+    """
+    from apps.server.models import ServerConfig
+    from wireguard.key_manager import decrypt
+
+    server = ServerConfig.get_active()
+    if not server:
+        raise RuntimeError('No active server configured.')
+
+    try:
+        private_key = decrypt(server.private_key)
+    except Exception:
+        private_key = server.private_key
+
+    return (
+        f'[Interface]\n'
+        f'Address = {server.address}\n'
+        f'SaveConfig = true\n'
+        f'PostUp = {server.post_up}\n'
+        f'PostDown = {server.post_down}\n'
+        f'ListenPort = {server.listen_port}\n'
+        f'PrivateKey = {private_key}\n'
+    )
+
+
+def verify_interface_section(config_content: str) -> bool:
+    """
+    Verify all critical Interface lines are present
+    before allowing wg-quick up.
+    If this fails the server will NOT be brought up.
+    """
+    from apps.server.models import ServerConfig
+    server = ServerConfig.get_active()
+
+    required = [
+        '[Interface]',
+        'SaveConfig = true',
+        'PostUp',
+        'PostDown',
+        f'ListenPort = {server.listen_port}',
+        f'Address = {server.address}',
+        'PrivateKey =',
+    ]
+
+    for line in required:
+        if line not in config_content:
+            logger.error(
+                'Interface verification failed — missing: %s', line
+            )
+            return False
+
+    return True
+
+
+def write_config(interface: str, content: str) -> None:
+    """
+    Write full config to wg0.conf via remote Python script.
+    Uses SFTP to avoid shell escaping issues entirely.
+    """
+    script = f"""
+content = {repr(content)}
+with open('/etc/wireguard/{interface}.conf', 'w') as f:
+    f.write(content)
+print('Config written successfully')
+"""
+    write_remote_script(script, '/tmp/wg_write_config.py')
+    run_command('sudo python3 /tmp/wg_write_config.py')
+    run_command('sudo rm -f /tmp/wg_write_config.py')
+    logger.info('wg0.conf written successfully')
+
+
+def parse_wg_dump(dump_output: str) -> dict:
+    peers = {}
+    lines = dump_output.strip().splitlines()
+
+    for line in lines[1:]:
+        parts = line.split('\t')
+        if len(parts) < 8:
+            continue
+
+        public_key = parts[0]
+        peers[public_key] = {
+            'endpoint':       parts[2],
+            'allowed_ips':    parts[3],
+            'last_handshake': int(parts[4]) if parts[4] != '0' else None,
+            'bytes_received': int(parts[5]),
+            'bytes_sent':     int(parts[6]),
+        }
+
+    return peers
+
+
+def ping_peers(server, ip_list: list) -> dict:
+    if not ip_list:
+        return {}
+
+    import base64
+    from wireguard.ssh_client import get_ssh_client
+
+    lines = []
+    for ip in ip_list:
+        lines.append(
+            f'ping -c 1 -W 1 {ip} > /dev/null 2>&1 '
+            f'&& echo "{ip}:UP" || echo "{ip}:DOWN"'
+        )
+    script  = '\n'.join(lines)
+    encoded = base64.b64encode(script.encode()).decode()
+    cmd     = f'echo {encoded} | base64 -d | bash'
+
+    client = get_ssh_client(server)
+    stdin, stdout, stderr = client.exec_command(cmd)
+    out = stdout.read().decode('utf-8', errors='ignore')
+    client.close()
+
+    results = {}
+    for line in out.splitlines():
+        line = line.strip()
+        if ':' in line:
+            ip, status = line.rsplit(':', 1)
+            results[ip.strip()] = (status.strip() == 'UP')
+
+    return results

@@ -1,0 +1,96 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    {% if server %}
+        <a href="{% url 'server:overview' server.pk %}"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+    {% else %}
+        <a href="{% url 'server:list' %}"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+    {% endif %}
+    <div>
+        <h4 class="fw-bold mb-0">{{ title }}</h4>
+        <small class="text-muted">Enter your WireGuard server details</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Save Configuration
+                        </button>
+                        {% if server %}
+                            <a href="{% url 'server:overview' server.pk %}"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        {% else %}
+                            <a href="{% url 'server:list' %}"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body p-4">
+                <h6 class="fw-bold">Where to find these values</h6>
+                <ul class="text-muted small mt-3">
+                    <li class="mb-2">
+                        <strong>Public IP</strong> — your GCP VM external IP
+                    </li>
+                    <li class="mb-2">
+                        <strong>Public Key</strong> — run
+                        <code>sudo wg show wg0 public-key</code>
+                        on your server
+                    </li>
+                    <li class="mb-2">
+                        <strong>Address</strong> — server VPN IP with mask
+                        e.g. <code>10.128.10.1/24</code>
+                    </li>
+                    <li class="mb-2">
+                        <strong>VPN Subnet</strong> — e.g.
+                        <code>10.128.10.0/24</code>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Private Key</strong> — run
+                        <code>sudo cat /etc/wireguard/wg0.conf</code>
+                        and copy the PrivateKey value
+                    </li>
+                    <li class="mb-2">
+                        <strong>SSH Key Path</strong> — path to your SSH
+                        key file e.g. <code>gcp_key</code>
+                    </li>
+                    <li class="mb-2">
+                        <strong>PostUp / PostDown</strong> — iptables rules,
+                        replace <code>eth0</code> with your network interface
+                        (check with <code>ip route | grep default</code>)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

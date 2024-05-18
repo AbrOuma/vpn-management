@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}My Devices — VPN Portal{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-0">My Devices</h4>
+                    <small class="text-muted">{{ vpnuser.email }}</small>
+                </div>
+                <a href="{% url 'portal:logout' %}"
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-box-arrow-left me-1"></i> Logout
+                </a>
+            </div>
+
+            <!-- Devices -->
+            {% if devices %}
+                {% for device in devices %}
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3 align-items-center">
+
+                                <!-- Device icon -->
+                                <div class="text-muted" style="font-size: 1.8rem;">
+                                    {% if device.device_type == 'laptop' %}
+                                        <i class="bi bi-laptop"></i>
+                                    {% elif device.device_type == 'phone' %}
+                                        <i class="bi bi-phone"></i>
+                                    {% elif device.device_type == 'tablet' %}
+                                        <i class="bi bi-tablet"></i>
+                                    {% elif device.device_type == 'server' %}
+                                        <i class="bi bi-server"></i>
+                                    {% else %}
+                                        <i class="bi bi-display"></i>
+                                    {% endif %}
+                                </div>
+
+                                <div>
+                                    <div class="fw-semibold">{{ device.name }}</div>
+                                    <small class="text-muted">
+                                        IP: <code>{{ device.ip_address }}</code>
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Status badge -->
+                            <div>
+                                {% if device.is_online %}
+                                    <span class="badge bg-success">Online</span>
+                                {% elif device.status == 'active' %}
+                                    <span class="badge bg-secondary">Active</span>
+                                {% elif device.status == 'disabled' %}
+                                    <span class="badge bg-warning text-dark">
+                                        Disabled
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">Revoked</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Last seen -->
+                        <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                {% if device.last_handshake %}
+                                    Last seen {{ device.last_handshake|timesince }} ago
+                                {% else %}
+                                    Never connected
+                                {% endif %}
+                            </small>
+
+                            {% if device.status == 'active' %}
+                                {% for invite in device.invites.all %}
+                                    {% if invite.is_valid %}
+                                        <a href="{% url 'invites:redeem' invite.token %}"
+                                           class="btn btn-sm btn-outline-dark">
+                                            <i class="bi bi-qr-code me-1"></i>
+                                            Setup Guide
+                                        </a>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+
+            {% else %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5 text-muted">
+                        <i class="bi bi-laptop fs-1 d-block mb-2"></i>
+                        No devices assigned yet.
+                        <br>
+                        <small>Contact your administrator to get set up.</small>
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}VPN Portal — Login{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="card border-0 shadow" style="width: 420px;">
+        <div class="card-body p-5">
+
+            <div class="text-center mb-4">
+                <i class="bi bi-shield-lock"
+                   style="font-size: 3rem; color: #1a1a2e;"></i>
+                <h4 class="fw-bold mt-2">VPN Portal</h4>
+                <p class="text-muted small">
+                    Enter your email to receive a login link
+                </p>
+            </div>
+
+            {% if sent %}
+                <div class="alert alert-success text-center">
+                    <i class="bi bi-envelope-check me-2"></i>
+                    Check your email for a login link.
+                    <br>
+                    <small class="text-muted">
+                        The link expires in 30 minutes.
+                    </small>
+                </div>
+            {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-dark w-100 mt-2">
+                        <i class="bi bi-envelope me-2"></i>
+                        Send Login Link
+                    </button>
+                </form>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Device — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'devices:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Add Device</h4>
+        <small class="text-muted">Create a new WireGuard peer</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-plus-lg me-1"></i> Create Device
+                        </button>
+                        <a href="{% url 'devices:list' %}"
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body p-4">
+                <h6 class="fw-bold">What happens when you add a device?</h6>
+                <ol class="text-muted small mt-3">
+                    <li class="mb-2">A WireGuard key pair is generated on the server</li>
+                    <li class="mb-2">The next free IP is assigned from the pool</li>
+                    <li class="mb-2">The device is added to WireGuard immediately</li>
+                    <li class="mb-2">A one-time invite link is created</li>
+                    <li>An email is sent to the user with a QR code and download link</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
