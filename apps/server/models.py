@@ -49,6 +49,10 @@ class ServerConfig(models.Model):
                      )
     ssh_user       = models.CharField(max_length=100, default='electrical')
     ssh_key_path   = models.CharField(max_length=500, default='gcp_key')
+    ssh_key_encrypted = models.TextField(
+        blank=True,
+        help_text='Encrypted SSH private key content'
+    )
     created_at     = models.DateTimeField(auto_now_add=True)
     updated_at     = models.DateTimeField(auto_now=True)
 

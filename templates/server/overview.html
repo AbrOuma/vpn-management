@@ -158,6 +158,31 @@
             </div>
         </div>
 
+        <!-- SSH Key -->
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="fw-bold mb-0">SSH Private Key</h6>
+                    <small class="text-muted">
+                        {% if server.ssh_key_encrypted %}
+                            Key stored securely in database
+                        {% else %}
+                            Using file path fallback:
+                            <code>{{ server.ssh_key_path }}</code>
+                        {% endif %}
+                    </small>
+                </div>
+                {% if server.ssh_key_encrypted %}
+                    <a href="{% url 'server:download_ssh_key' server.pk %}"
+                    class="btn btn-sm btn-outline-dark">
+                        <i class="bi bi-download me-1"></i> Download
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+
+
         <!-- Device count -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4 d-flex justify-content-between align-items-center">

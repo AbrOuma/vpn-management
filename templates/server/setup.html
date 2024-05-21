@@ -27,7 +27,7 @@
     <div class="col-md-7">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     {{ form|crispy }}
                     <div class="d-flex gap-2 mt-3">

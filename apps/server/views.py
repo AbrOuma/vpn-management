@@ -6,6 +6,12 @@ from .models import ServerConfig, IPAllocation
 
 
 class ServerConfigForm(forms.ModelForm):
+    ssh_key_file = forms.FileField(
+        required=False,
+        help_text='Upload your SSH private key file (e.g. gcp_key). '
+                  'Leave blank to keep existing key.'
+    )
+
     class Meta:
         model  = ServerConfig
         fields = [
@@ -38,7 +44,7 @@ class ServerConfigForm(forms.ModelForm):
             'server_ip':    'e.g. 10.0.0.1',
             'dns_servers':  'Comma separated e.g. 1.1.1.1,8.8.8.8',
             'private_key':  'WireGuard server private key — will be encrypted',
-            'ssh_key_path': 'Path to SSH key file e.g. gcp_key',
+            'ssh_key_path': 'Fallback path if no key uploaded e.g. gcp_key',
         }
 
 
@@ -52,9 +58,11 @@ def server_list(request):
 def server_add(request):
     form = ServerConfigForm()
     if request.method == 'POST':
-        form = ServerConfigForm(request.POST)
+        form = ServerConfigForm(request.POST, request.FILES)
         if form.is_valid():
             server  = form.save(commit=False)
+
+            # Encrypt WireGuard private key
             raw_key = form.cleaned_data.get('private_key', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
@@ -62,6 +70,14 @@ def server_add(request):
                     server.private_key = encrypt(raw_key)
                 except Exception:
                     server.private_key = raw_key
+
+            # Encrypt SSH key if uploaded
+            ssh_key_file = form.cleaned_data.get('ssh_key_file')
+            if ssh_key_file:
+                from wireguard.key_manager import encrypt
+                key_content = ssh_key_file.read().decode('utf-8')
+                server.ssh_key_encrypted = encrypt(key_content)
+
             server.save()
             messages.success(request, f'Server "{server.name}" added.')
             return redirect('server:list')
@@ -77,9 +93,11 @@ def server_setup(request, pk):
     form   = ServerConfigForm(instance=server)
 
     if request.method == 'POST':
-        form = ServerConfigForm(request.POST, instance=server)
+        form = ServerConfigForm(request.POST, request.FILES, instance=server)
         if form.is_valid():
             server  = form.save(commit=False)
+
+            # Encrypt WireGuard private key
             raw_key = form.cleaned_data.get('private_key', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
@@ -87,6 +105,14 @@ def server_setup(request, pk):
                     server.private_key = encrypt(raw_key)
                 except Exception:
                     server.private_key = raw_key
+
+            # Encrypt SSH key if uploaded
+            ssh_key_file = form.cleaned_data.get('ssh_key_file')
+            if ssh_key_file:
+                from wireguard.key_manager import encrypt
+                key_content = ssh_key_file.read().decode('utf-8')
+                server.ssh_key_encrypted = encrypt(key_content)
+
             server.save()
             messages.success(request, 'Server configuration saved.')
             return redirect('server:overview', pk=pk)
@@ -96,6 +122,25 @@ def server_setup(request, pk):
         'server': server,
         'title':  'Edit Server',
     })
+
+
+@login_required
+def download_ssh_key(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+
+    if not server.ssh_key_encrypted:
+        messages.error(request, 'No SSH key stored for this server.')
+        return redirect('server:overview', pk=pk)
+
+    from wireguard.key_manager import decrypt
+    from django.http import HttpResponse
+
+    key_content = decrypt(server.ssh_key_encrypted)
+    filename    = f'{server.name.replace(" ", "_")}_ssh_key'
+    response    = HttpResponse(key_content, content_type='application/octet-stream')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
 
 
 @login_required

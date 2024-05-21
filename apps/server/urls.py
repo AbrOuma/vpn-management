@@ -14,4 +14,5 @@ urlpatterns = [
     path('<int:pk>/sync/',          views.sync_server,        name='sync'),
     path('<int:pk>/health/',        views.server_health,      name='health'),
     path('<int:pk>/delete/',        views.server_delete,      name='delete'),
+    path('<int:pk>/ssh-key/download/', views.download_ssh_key, name='download_ssh_key'),
 ]
