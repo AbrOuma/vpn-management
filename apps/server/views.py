@@ -8,8 +8,16 @@ from .models import ServerConfig, IPAllocation
 class ServerConfigForm(forms.ModelForm):
     ssh_key_file = forms.FileField(
         required=False,
-        help_text='Upload your SSH private key file (e.g. gcp_key). '
-                  'Leave blank to keep existing key.'
+        label='SSH Private Key',
+        help_text='Upload your SSH private key file e.g. gcp_key'
+    )
+    private_key_input = forms.CharField(
+        required=False,
+        label='WireGuard Private Key',
+        widget=forms.PasswordInput(
+            attrs={'placeholder': 'Leave blank to keep existing key'}
+        ),
+        help_text='WireGuard server private key - will be encrypted'
     )
 
     class Meta:
@@ -23,28 +31,40 @@ class ServerConfigForm(forms.ModelForm):
             'server_ip',
             'address',
             'public_key',
-            'private_key',
             'dns_servers',
             'mtu',
             'post_up',
             'post_down',
             'ssh_host',
             'ssh_user',
-            'ssh_key_path',
         ]
+        labels = {
+            'name':           'Server Name',
+            'interface_name': 'Interface Name',
+            'public_ip':      'Public IP',
+            'listen_port':    'Listen Port',
+            'vpn_subnet':     'VPN Subnet',
+            'server_ip':      'Server VPN IP',
+            'address':        'VPN Address',
+            'public_key':     'Public Key',
+            'dns_servers':    'DNS Servers',
+            'mtu':            'MTU',
+            'post_up':        'Post Up',
+            'post_down':      'Post Down',
+            'ssh_host':       'SSH Host',
+            'ssh_user':       'SSH User',
+        }
         widgets = {
-            'public_key':  forms.TextInput(),
-            'private_key': forms.PasswordInput(render_value=True),
-            'post_up':     forms.Textarea(attrs={'rows': 2}),
-            'post_down':   forms.Textarea(attrs={'rows': 2}),
+            'public_key': forms.TextInput(),
+            'post_up':    forms.Textarea(attrs={'rows': 2}),
+            'post_down':  forms.Textarea(attrs={'rows': 2}),
         }
         help_texts = {
-            'vpn_subnet':   'e.g. 10.0.0.0/24',
-            'address':      'Server VPN address with mask e.g. 10.128.10.1/24',
-            'server_ip':    'e.g. 10.0.0.1',
-            'dns_servers':  'Comma separated e.g. 1.1.1.1,8.8.8.8',
-            'private_key':  'WireGuard server private key — will be encrypted',
-            'ssh_key_path': 'Fallback path if no key uploaded e.g. gcp_key',
+            'vpn_subnet':  'e.g. 10.0.0.0/24',
+            'address':     'Server VPN address with mask e.g. 10.128.10.1/24',
+            'server_ip':   'e.g. 10.0.0.1',
+            'dns_servers': 'Comma separated e.g. 1.1.1.1,8.8.8.8',
+            'mtu':         'Default is 1420',
         }
 
 
@@ -63,7 +83,7 @@ def server_add(request):
             server  = form.save(commit=False)
 
             # Encrypt WireGuard private key
-            raw_key = form.cleaned_data.get('private_key', '')
+            raw_key = raw_key = form.cleaned_data.get('private_key_input', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
                 try:
@@ -98,7 +118,7 @@ def server_setup(request, pk):
             server  = form.save(commit=False)
 
             # Encrypt WireGuard private key
-            raw_key = form.cleaned_data.get('private_key', '')
+            raw_key = form.cleaned_data.get('private_key_input', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
                 try:
