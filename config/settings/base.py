@@ -87,11 +87,6 @@ TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']
 
 
 
-# WireGuard settings
-WIREGUARD_CONFIG_PATH = os.environ.get('WIREGUARD_CONFIG_PATH')
-WIREGUARD_INTERFACE   = os.environ.get('WIREGUARD_INTERFACE')
-
-
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
@@ -143,10 +138,3 @@ LOGGING = {
         },
     },
 }
-
-
-
-# GCP SSH Connection
-GCP_SSH_HOST     = os.environ.get('GCP_SSH_HOST')
-GCP_SSH_USER     = os.environ.get('GCP_SSH_USER')
-GCP_SSH_KEY_PATH = os.environ.get('GCP_SSH_KEY_PATH', 'gcp_key')
