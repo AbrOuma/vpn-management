@@ -8,19 +8,20 @@ logger = logging.getLogger('wireguard')
 class WireGuardManager:
 
     def __init__(self, server=None):
-            from apps.server.models import ServerConfig
-            if server:
-                self.server = server
-            else:
-                self.server = ServerConfig.objects.first()
-            if not self.server:
-                raise RuntimeError('No server configured.')
-            self.interface = self.server.interface_name
+        from apps.server.models import ServerConfig
+        if server:
+            self.server = server
+        else:
+            self.server = ServerConfig.objects.first()
+        if not self.server:
+            raise RuntimeError('No server configured.')
+        self.interface = self.server.interface_name
 
     def _get_active_peers(self) -> list:
         from apps.devices.models import Device
         devices = Device.objects.filter(
-            status=Device.Status.ACTIVE
+            server=self.server,
+            status=Device.Status.ACTIVE,
         ).select_related('allocated_ip')
 
         peer_blocks = []
@@ -36,28 +37,21 @@ class WireGuardManager:
 
     def _build_full_config(self) -> str:
         from wireguard.commands import build_interface_section
-        interface_section = build_interface_section()
+        interface_section = build_interface_section(self.server)
         peer_blocks       = self._get_active_peers()
         return f'{interface_section}\n' + '\n'.join(peer_blocks)
 
     def _safe_restart(self) -> None:
-        """
-        1. Build config from database (Interface from DB, peers from DB)
-        2. Verify Interface section is intact
-        3. Down
-        4. Write config
-        5. Up — ALWAYS runs
-        """
         from wireguard.commands import (
             wg_down, wg_up,
             write_config,
             verify_interface_section,
+            wg_is_running,
         )
 
-        # Build and verify BEFORE taking server down
         config = self._build_full_config()
 
-        if not verify_interface_section(config):
+        if not verify_interface_section(config, self.server):
             raise RuntimeError(
                 'Interface section verification failed. '
                 'Check server config in the database.'
@@ -65,17 +59,15 @@ class WireGuardManager:
 
         logger.info('Config verified — proceeding with restart')
 
-        # Down
-        wg_down(self.interface)
-        time.sleep(1)
+        if wg_is_running(self.interface):
+            wg_down(self.interface)
+            time.sleep(1)
 
-        # Write config
         try:
             write_config(self.interface, config)
         except Exception as e:
             logger.error('Failed to write config: %s — bringing up anyway', e)
 
-        # Up — ALWAYS
         time.sleep(1)
         wg_up(self.interface)
         logger.info('Server back up cleanly')

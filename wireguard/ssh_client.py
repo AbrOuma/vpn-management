@@ -4,18 +4,6 @@ import logging
 logger = logging.getLogger('wireguard')
 
 
-def get_active_server():
-    """Get the currently active server config from the database."""
-    from apps.server.models import ServerConfig
-    server = ServerConfig.get_active()
-    if not server:
-        raise RuntimeError(
-            'No active server configured. '
-            'Go to Server page and mark a server as active.'
-        )
-    return server
-
-
 def get_ssh_client(server=None) -> paramiko.SSHClient:
     if not server:
         from apps.server.models import ServerConfig

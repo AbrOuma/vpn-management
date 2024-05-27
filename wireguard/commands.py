@@ -38,17 +38,12 @@ def wg_up(interface: str = 'wg0') -> None:
     logger.info('WireGuard %s up', interface)
 
 
-def build_interface_section() -> str:
+def build_interface_section(server) -> str:
     """
-    Build the [Interface] section from the active ServerConfig.
-    This always comes from the database — never from the file.
+    Build the [Interface] section from the given ServerConfig.
+    Always comes from the database — never from the file.
     """
-    from apps.server.models import ServerConfig
     from wireguard.key_manager import decrypt
-
-    server = ServerConfig.get_active()
-    if not server:
-        raise RuntimeError('No active server configured.')
 
     try:
         private_key = decrypt(server.private_key)
@@ -66,15 +61,11 @@ def build_interface_section() -> str:
     )
 
 
-def verify_interface_section(config_content: str) -> bool:
+def verify_interface_section(config_content: str, server) -> bool:
     """
     Verify all critical Interface lines are present
     before allowing wg-quick up.
-    If this fails the server will NOT be brought up.
     """
-    from apps.server.models import ServerConfig
-    server = ServerConfig.get_active()
-
     required = [
         '[Interface]',
         'SaveConfig = true',
