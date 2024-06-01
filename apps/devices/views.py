@@ -135,37 +135,26 @@ def device_delete(request, pk):
     device = get_object_or_404(Device, pk=pk)
 
     if request.method == 'POST':
-        # Save info before deletion
-        device_name       = device.name
-        device_public_key = device.public_key
-        allocation        = device.allocated_ip
+        device_name = device.name
+        allocation  = device.allocated_ip
+        server      = device.server
 
-        # Step 1 — Free the IP back to the pool immediately
+        # Step 1 — Free the IP
         from wireguard.ip_allocator import IPAllocator
-        from apps.server.models import ServerConfig
-        server    = ServerConfig.objects.first()
-        allocator = IPAllocator(server)
-        allocator.release(allocation)
+        IPAllocator(server).release(allocation)
 
-        # Step 2 — Delete from database immediately
+        # Step 2 — Delete from database
         device.delete()
 
-        # Step 3 — Remove from WireGuard server in background
-        # Page returns immediately, this runs behind the scenes
-        from .tasks import run_in_background, remove_device_from_server
-        from django.conf import settings
-        run_in_background(
-            remove_device_from_server,
-            device_public_key,
-            device_name,
-            settings.WIREGUARD_INTERFACE,
-        )
+        # Step 3 — Sync WireGuard (removes peer from server)
+        try:
+            from wireguard.manager import WireGuardManager
+            WireGuardManager(server).sync_all()
+        except Exception as e:
+            messages.warning(request, f'Device deleted but server sync failed: {e}')
+            return redirect('devices:list')
 
-        messages.success(
-            request,
-            f'Device "{device_name}" deleted. '
-            f'Server is updating in the background.'
-        )
+        messages.success(request, f'Device "{device_name}" deleted.')
         return redirect('devices:list')
 
     return redirect('devices:detail', pk=pk)

@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django import forms
 from .models import ServerConfig, IPAllocation
 
@@ -23,20 +25,10 @@ class ServerConfigForm(forms.ModelForm):
     class Meta:
         model  = ServerConfig
         fields = [
-            'name',
-            'interface_name',
-            'public_ip',
-            'listen_port',
-            'vpn_subnet',
-            'server_ip',
-            'address',
-            'public_key',
-            'dns_servers',
-            'mtu',
-            'post_up',
-            'post_down',
-            'ssh_host',
-            'ssh_user',
+            'name', 'interface_name', 'public_ip', 'listen_port',
+            'vpn_subnet', 'server_ip', 'address', 'public_key',
+            'dns_servers', 'mtu', 'post_up', 'post_down',
+            'ssh_host', 'ssh_user',
         ]
         labels = {
             'name':           'Server Name',
@@ -81,30 +73,23 @@ def server_add(request):
         form = ServerConfigForm(request.POST, request.FILES)
         if form.is_valid():
             server  = form.save(commit=False)
-
-            # Encrypt WireGuard private key
-            raw_key = raw_key = form.cleaned_data.get('private_key_input', '')
+            raw_key = form.cleaned_data.get('private_key_input', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
                 try:
                     server.private_key = encrypt(raw_key)
                 except Exception:
                     server.private_key = raw_key
-
-            # Encrypt SSH key if uploaded
             ssh_key_file = form.cleaned_data.get('ssh_key_file')
             if ssh_key_file:
                 from wireguard.key_manager import encrypt
-                key_content = ssh_key_file.read().decode('utf-8')
-                server.ssh_key_encrypted = encrypt(key_content)
-
+                server.ssh_key_encrypted = encrypt(
+                    ssh_key_file.read().decode('utf-8')
+                )
             server.save()
             messages.success(request, f'Server "{server.name}" added.')
             return redirect('server:list')
-    return render(request, 'server/setup.html', {
-        'form':  form,
-        'title': 'Add Server',
-    })
+    return render(request, 'server/setup.html', {'form': form, 'title': 'Add Server'})
 
 
 @login_required
@@ -116,8 +101,6 @@ def server_setup(request, pk):
         form = ServerConfigForm(request.POST, request.FILES, instance=server)
         if form.is_valid():
             server  = form.save(commit=False)
-
-            # Encrypt WireGuard private key
             raw_key = form.cleaned_data.get('private_key_input', '')
             if raw_key:
                 from wireguard.key_manager import encrypt
@@ -125,36 +108,29 @@ def server_setup(request, pk):
                     server.private_key = encrypt(raw_key)
                 except Exception:
                     server.private_key = raw_key
-
-            # Encrypt SSH key if uploaded
             ssh_key_file = form.cleaned_data.get('ssh_key_file')
             if ssh_key_file:
                 from wireguard.key_manager import encrypt
-                key_content = ssh_key_file.read().decode('utf-8')
-                server.ssh_key_encrypted = encrypt(key_content)
-
+                server.ssh_key_encrypted = encrypt(
+                    ssh_key_file.read().decode('utf-8')
+                )
             server.save()
             messages.success(request, 'Server configuration saved.')
             return redirect('server:overview', pk=pk)
 
     return render(request, 'server/setup.html', {
-        'form':   form,
-        'server': server,
-        'title':  'Edit Server',
+        'form': form, 'server': server, 'title': 'Edit Server',
     })
 
 
 @login_required
 def download_ssh_key(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
-
     if not server.ssh_key_encrypted:
         messages.error(request, 'No SSH key stored for this server.')
         return redirect('server:overview', pk=pk)
-
     from wireguard.key_manager import decrypt
     from django.http import HttpResponse
-
     key_content = decrypt(server.ssh_key_encrypted)
     filename    = f'{server.name.replace(" ", "_")}_ssh_key'
     response    = HttpResponse(key_content, content_type='application/octet-stream')
@@ -162,20 +138,12 @@ def download_ssh_key(request, pk):
     return response
 
 
-
 @login_required
 def server_overview(request, pk):
-    server = get_object_or_404(ServerConfig, pk=pk)
-
-    ip_free     = IPAllocation.objects.filter(
-                    server=server,
-                    status=IPAllocation.Status.FREE
-                  ).count()
-    ip_assigned = IPAllocation.objects.filter(
-                    server=server,
-                    status=IPAllocation.Status.ASSIGNED
-                  ).count()
-    ip_total         = ip_free + ip_assigned
+    server      = get_object_or_404(ServerConfig, pk=pk)
+    ip_free     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
+    ip_assigned = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
+    ip_total    = ip_free + ip_assigned
     ip_usage_percent = round((ip_assigned / ip_total) * 100) if ip_total > 0 else 0
 
     return render(request, 'server/overview.html', {
@@ -192,28 +160,16 @@ def repopulate_ip_pool(request, pk):
     if request.method == 'POST':
         server = get_object_or_404(ServerConfig, pk=pk)
         from wireguard.ip_allocator import IPAllocator
-
-        deleted = IPAllocation.objects.filter(
-            server=server,
-            status=IPAllocation.Status.FREE
-        ).delete()[0]
-
+        deleted   = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
         allocator = IPAllocator(server)
         created   = allocator.populate_pool()
-
-        messages.success(
-            request,
-            f'IP pool updated for {server.vpn_subnet}. '
-            f'{deleted} old IPs removed, {created} new IPs added.'
-        )
-
+        messages.success(request, f'IP pool updated. {deleted} removed, {created} added.')
     return redirect('server:overview', pk=pk)
 
 
 @login_required
 def import_preview(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
-
     from wireguard.parser import WireGuardConfigParser
 
     peers        = []
@@ -234,7 +190,7 @@ def import_preview(request, pk):
     elif request.GET.get('from_server'):
         try:
             from wireguard.commands import read_server_config
-            content      = read_server_config(server.interface_name)
+            content      = read_server_config(server, server.interface_name)
             parser       = WireGuardConfigParser()
             config       = parser.parse_string(content)
             peers        = config.peers
@@ -244,19 +200,14 @@ def import_preview(request, pk):
             error = f'Could not connect to server: {e}'
 
     from apps.devices.models import Device
-    existing_keys = set(
-        Device.objects.filter(server=server).values_list('public_key', flat=True)
-    )
-
+    existing_keys  = set(Device.objects.filter(server=server).values_list('public_key', flat=True))
     new_peers      = [p for p in peers if p.public_key not in existing_keys]
     existing_peers = [p for p in peers if p.public_key in existing_keys]
 
     return render(request, 'server/import.html', {
-        'server':         server,
-        'new_peers':      new_peers,
+        'server': server, 'new_peers': new_peers,
         'existing_peers': existing_peers,
-        'source_label':   source_label,
-        'error':          error,
+        'source_label': source_label, 'error': error,
     })
 
 
@@ -267,7 +218,6 @@ def import_commit(request, pk):
 
     server  = get_object_or_404(ServerConfig, pk=pk)
     content = request.session.get(f'import_config_{pk}')
-
     if not content:
         messages.error(request, 'No config found. Please upload the file again.')
         return redirect('server:import', pk=pk)
@@ -281,7 +231,6 @@ def import_commit(request, pk):
     config    = parser.parse_string(content)
     peers     = config.peers
     allocator = IPAllocator(server)
-
     allocator.populate_pool()
 
     imported = 0
@@ -292,18 +241,12 @@ def import_commit(request, pk):
             if not peer.public_key:
                 skipped += 1
                 continue
-
-            if Device.objects.filter(
-                server=server,
-                public_key=peer.public_key
-            ).exists():
+            if Device.objects.filter(server=server, public_key=peer.public_key).exists():
                 skipped += 1
                 continue
-
             if peer.ip_address:
                 allocation, _ = IPAllocation.objects.get_or_create(
-                    server=server,
-                    ip_address=peer.ip_address,
+                    server=server, ip_address=peer.ip_address,
                     defaults={'status': IPAllocation.Status.ASSIGNED}
                 )
                 allocation.status = IPAllocation.Status.ASSIGNED
@@ -316,24 +259,20 @@ def import_commit(request, pk):
                     break
 
             Device.objects.create(
-                server                  = server,
-                name                    = f'Imported ({peer.ip_address})',
-                device_type             = Device.DeviceType.OTHER,
-                public_key              = peer.public_key,
-                private_key_encrypted   = '',
-                preshared_key_encrypted = '',
-                allocated_ip            = allocation,
-                status                  = Device.Status.ACTIVE,
-                imported                = True,
+                server=server,
+                name=f'Imported ({peer.ip_address})',
+                device_type=Device.DeviceType.OTHER,
+                public_key=peer.public_key,
+                private_key_encrypted='',
+                preshared_key_encrypted='',
+                allocated_ip=allocation,
+                status=Device.Status.ACTIVE,
+                imported=True,
             )
             imported += 1
 
     del request.session[f'import_config_{pk}']
-
-    messages.success(
-        request,
-        f'Import complete — {imported} imported, {skipped} skipped.'
-    )
+    messages.success(request, f'Import complete — {imported} imported, {skipped} skipped.')
     return redirect('devices:list')
 
 
@@ -356,8 +295,8 @@ def server_health(request, pk):
         server = get_object_or_404(ServerConfig, pk=pk)
         try:
             from wireguard.commands import wg_is_running, wg_up
-            if not wg_is_running(server.interface_name):
-                wg_up(server.interface_name)
+            if not wg_is_running(server, server.interface_name):
+                wg_up(server, server.interface_name)
                 messages.success(request, 'WireGuard was down - successfully restarted.')
             else:
                 messages.info(request, 'WireGuard is already running.')
@@ -375,3 +314,54 @@ def server_delete(request, pk):
         messages.success(request, f'Server "{name}" deleted.')
         return redirect('server:list')
     return redirect('server:overview', pk=pk)
+
+
+# ----------------------------------------------------------------
+# AJAX endpoints
+# ----------------------------------------------------------------
+
+@login_required
+@require_POST
+def ajax_sync(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    try:
+        from wireguard.manager import WireGuardManager
+        WireGuardManager(server).sync_all()
+        return JsonResponse({'status': 'ok', 'message': 'All devices synced successfully.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def ajax_health(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    try:
+        from wireguard.commands import wg_is_running, wg_up
+        if not wg_is_running(server, server.interface_name):
+            wg_up(server, server.interface_name)
+            return JsonResponse({'status': 'ok', 'message': 'WireGuard was down — restarted successfully.'})
+        return JsonResponse({'status': 'ok', 'message': 'WireGuard is already running.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def ajax_repopulate(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    try:
+        from wireguard.ip_allocator import IPAllocator
+        deleted   = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
+        allocator = IPAllocator(server)
+        created   = allocator.populate_pool()
+        ip_free     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
+        ip_assigned = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
+        return JsonResponse({
+            'status':      'ok',
+            'message':     f'{deleted} old IPs removed, {created} new IPs added.',
+            'ip_free':     ip_free,
+            'ip_assigned': ip_assigned,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

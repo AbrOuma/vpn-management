@@ -1,6 +1,5 @@
 import logging
 import time
-from django.conf import settings
 
 logger = logging.getLogger('wireguard')
 
@@ -43,10 +42,8 @@ class WireGuardManager:
 
     def _safe_restart(self) -> None:
         from wireguard.commands import (
-            wg_down, wg_up,
-            write_config,
-            verify_interface_section,
-            wg_is_running,
+            wg_down, wg_up, write_config,
+            verify_interface_section, wg_is_running,
         )
 
         config = self._build_full_config()
@@ -59,28 +56,28 @@ class WireGuardManager:
 
         logger.info('Config verified — proceeding with restart')
 
-        if wg_is_running(self.interface):
-            wg_down(self.interface)
+        if wg_is_running(self.server, self.interface):
+            wg_down(self.server, self.interface)
             time.sleep(1)
 
         try:
-            write_config(self.interface, config)
+            write_config(self.server, self.interface, config)
         except Exception as e:
             logger.error('Failed to write config: %s — bringing up anyway', e)
 
         time.sleep(1)
-        wg_up(self.interface)
+        wg_up(self.server, self.interface)
         logger.info('Server back up cleanly')
 
     def add_device(self, device) -> None:
         logger.info('Adding device %s', device.name)
         self._safe_restart()
-        logger.info('Device %s added — server back up', device.name)
+        logger.info('Device %s added', device.name)
 
     def remove_device(self, device) -> None:
         logger.info('Removing device %s', device.name)
         self._safe_restart()
-        logger.info('Device %s removed — server back up', device.name)
+        logger.info('Device %s removed', device.name)
 
     def sync_all(self) -> None:
         logger.info('Syncing all peers to server')
@@ -93,11 +90,14 @@ class WireGuardManager:
         from datetime import datetime
         from django.utils import timezone
 
-        dump       = wg_show_dump(self.interface)
+        dump       = wg_show_dump(self.server, self.interface)
         peer_stats = parse_wg_dump(dump)
         updated    = 0
 
-        for device in Device.objects.filter(status=Device.Status.ACTIVE):
+        for device in Device.objects.filter(
+            server=self.server,
+            status=Device.Status.ACTIVE
+        ):
             stats = peer_stats.get(device.public_key)
             if not stats:
                 continue
@@ -118,4 +118,4 @@ class WireGuardManager:
 
     def is_running(self) -> bool:
         from wireguard.commands import wg_is_running
-        return wg_is_running(self.interface)
+        return wg_is_running(self.server, self.interface)
