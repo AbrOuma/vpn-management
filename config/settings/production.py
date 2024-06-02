@@ -27,7 +27,9 @@ SESSION_COOKIE_SECURE          = True
 CSRF_COOKIE_SECURE             = True
 X_FRAME_OPTIONS                = 'DENY'
 
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+CSRF_TRUSTED_ORIGINS = [
+    'https://vpn-management-production.up.railway.app',
+]
 
 # Static files served by whitenoise
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
