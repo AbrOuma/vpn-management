@@ -309,7 +309,10 @@ def server_health(request, pk):
 def server_delete(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
+        from apps.devices.models import Device
         name = server.name
+        Device.objects.filter(server=server).delete()
+        IPAllocation.objects.filter(server=server).delete()
         server.delete()
         messages.success(request, f'Server "{name}" deleted.')
         return redirect('server:list')
