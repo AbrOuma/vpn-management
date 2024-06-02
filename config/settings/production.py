@@ -27,6 +27,8 @@ SESSION_COOKIE_SECURE          = True
 CSRF_COOKIE_SECURE             = True
 X_FRAME_OPTIONS                = 'DENY'
 
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+
 # Static files served by whitenoise
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATIC_ROOT     = BASE_DIR / 'staticfiles'
