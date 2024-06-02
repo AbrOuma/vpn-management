@@ -5,6 +5,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
+
 DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

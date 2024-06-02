@@ -3,7 +3,7 @@ import environ
 from .base import *
 
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
+environ.Env.read_env(BASE_DIR / '.env', overwrite=True)
 
 SECRET_KEY    = env('SECRET_KEY')
 DEBUG         = False
