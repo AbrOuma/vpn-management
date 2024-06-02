@@ -20,9 +20,9 @@ ANYMAIL = {
     'SENDGRID_API_KEY': env('SENDGRID_API_KEY'),
 }
 
-SECURE_SSL_REDIRECT            = True
-SECURE_HSTS_SECONDS            = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# Railway handles SSL termination — don't redirect
+SECURE_PROXY_SSL_HEADER        = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT            = False
 SESSION_COOKIE_SECURE          = True
 CSRF_COOKIE_SECURE             = True
 X_FRAME_OPTIONS                = 'DENY'
