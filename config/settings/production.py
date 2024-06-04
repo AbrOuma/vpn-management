@@ -7,7 +7,7 @@ environ.Env.read_env(BASE_DIR / '.env', overwrite=True)
 
 SECRET_KEY    = env('SECRET_KEY')
 DEBUG         = False
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 DATABASES = {
     'default': env.db('DATABASE_URL')
@@ -28,10 +28,10 @@ CSRF_COOKIE_SECURE             = True
 X_FRAME_OPTIONS                = 'DENY'
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://vpn-management-production.up.railway.app',
+    h.strip() for h in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if h.strip()
 ]
 
 # Static files served by whitenoise
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-STATIC_ROOT     = BASE_DIR / 'staticfiles'
+STATIC_ROOT          = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
