@@ -16,7 +16,7 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">Add Department</h6>
-                <form method="post" action="{% url 'users:department_add' %}">
+                <form method="post" action="{% url 'users:department_add' %}" id="addDeptForm">
                     {% csrf_token %}
                     <div class="input-group">
                         <input type="text"
@@ -24,8 +24,11 @@
                                class="form-control"
                                placeholder="e.g. Engineering"
                                required>
-                        <button type="submit" class="btn btn-dark">
-                            <i class="bi bi-plus-lg"></i> Add
+                        <button type="submit" class="btn btn-dark" id="addDeptBtn">
+                            <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                            <span class="btn-label">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -51,17 +54,19 @@
                             <tr>
                                 <td>{{ dept.name }}</td>
                                 <td>
-                                    <span class="badge bg-secondary">
-                                        {{ dept.user_count }}
-                                    </span>
+                                    <span class="badge bg-secondary">{{ dept.user_count }}</span>
                                 </td>
                                 <td class="text-end">
                                     {% if dept.user_count == 0 %}
                                         <form method="post"
-                                              action="{% url 'users:department_delete' dept.pk %}">
+                                              action="{% url 'users:department_delete' dept.pk %}"
+                                              class="dept-delete-form">
                                             {% csrf_token %}
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash"></i>
+                                            <button class="btn btn-sm btn-outline-danger dept-delete-btn">
+                                                <span class="spinner d-none spinner-border spinner-border-sm"></span>
+                                                <span class="btn-label">
+                                                    <i class="bi bi-trash"></i>
+                                                </span>
                                             </button>
                                         </form>
                                     {% else %}
@@ -73,13 +78,35 @@
                         </tbody>
                     </table>
                 {% else %}
-                    <p class="text-muted text-center py-3">
-                        No departments yet.
-                    </p>
+                    <p class="text-muted text-center py-3">No departments yet.</p>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Add department button
+document.getElementById('addDeptForm').addEventListener('submit', function () {
+    const btn     = document.getElementById('addDeptBtn');
+    const spinner = btn.querySelector('.spinner');
+    const label   = btn.querySelector('.btn-label');
+    spinner.classList.remove('d-none');
+    label.classList.add('d-none');
+    btn.disabled = true;
+});
+
+// Delete department buttons
+document.querySelectorAll('.dept-delete-form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+        const btn     = form.querySelector('.dept-delete-btn');
+        const spinner = btn.querySelector('.spinner');
+        const label   = btn.querySelector('.btn-label');
+        spinner.classList.remove('d-none');
+        label.classList.add('d-none');
+        btn.disabled = true;
+    });
+});
+</script>
 
 {% endblock %}

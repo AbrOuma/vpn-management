@@ -6,8 +6,7 @@
 {% block dashboard_content %}
 
 <div class="d-flex align-items-center gap-2 mb-4">
-    <a href="{% url 'devices:detail' device.pk %}"
-       class="btn btn-sm btn-outline-secondary">
+    <a href="{% url 'devices:detail' device.pk %}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left"></i>
     </a>
     <div>
@@ -20,13 +19,15 @@
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" id="editDeviceForm">
                     {% csrf_token %}
                     {{ form|crispy }}
                     <div class="d-flex gap-2 mt-3">
-                        <button type="submit" class="btn btn-dark">
-                            <i class="bi bi-check-lg me-1"></i>
-                            Save Changes
+                        <button type="submit" class="btn btn-dark" id="editDeviceBtn">
+                            <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                            <span class="btn-label">
+                                <i class="bi bi-check-lg me-1"></i>Save Changes
+                            </span>
                         </button>
                         <a href="{% url 'devices:detail' device.pk %}"
                            class="btn btn-outline-secondary">
@@ -45,29 +46,28 @@
                 <ul class="text-muted small mt-3">
                     <li class="mb-2">
                         <i class="bi bi-check-circle text-success me-1"></i>
-                        <strong>Name</strong> — rename the device freely
+                        <strong>Name</strong> - rename the device freely
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-check-circle text-success me-1"></i>
-                        <strong>Device type</strong> — laptop, phone, tablet etc
+                        <strong>Device type</strong> - laptop, phone, tablet etc
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-check-circle text-success me-1"></i>
-                        <strong>User</strong> — reassign to a different user
+                        <strong>User</strong> - reassign to a different user
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-x-circle text-danger me-1"></i>
-                        <strong>IP address</strong> — locked, cannot be changed
+                        <strong>IP address</strong> - locked, cannot be changed
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-x-circle text-danger me-1"></i>
-                        <strong>Public key</strong> — locked, cannot be changed
+                        <strong>Public key</strong> - locked, cannot be changed
                     </li>
                 </ul>
             </div>
         </div>
 
-        <!-- Read-only device info -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">Connection Details (read-only)</h6>
@@ -93,5 +93,16 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('editDeviceForm').addEventListener('submit', function () {
+    const btn     = document.getElementById('editDeviceBtn');
+    const spinner = btn.querySelector('.spinner');
+    const label   = btn.querySelector('.btn-label');
+    spinner.classList.remove('d-none');
+    label.classList.add('d-none');
+    btn.disabled = true;
+});
+</script>
 
 {% endblock %}

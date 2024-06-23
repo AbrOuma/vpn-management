@@ -86,6 +86,16 @@
                         <td class="text-muted">SSH</td>
                         <td><code>{{ server.ssh_user }}@{{ server.ssh_host }}</code></td>
                     </tr>
+                    {% if server.gcp_instance_name %}
+                    <tr>
+                        <td class="text-muted">GCP Instance</td>
+                        <td><code>{{ server.gcp_instance_name }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">GCP Zone</td>
+                        <td><code>{{ server.gcp_zone }}</code></td>
+                    </tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
@@ -180,36 +190,150 @@
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- Delete Modal - 3 options -->
 <div class="modal fade" id="deleteServerModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-danger">Delete Server</h5>
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-trash me-2"></i>Delete Server
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Permanently delete <strong>{{ server.name }}</strong>?</p>
-                <div class="alert alert-danger mb-0">
+                <p class="text-muted mb-4">
+                    Choose how you want to delete <strong>{{ server.name }}</strong>.
+                    This cannot be undone.
+                </p>
+
+                <div class="row g-3">
+
+                    <!-- Option 1: DB only -->
+                    <div class="col-md-4">
+                        <div class="card border-warning h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    <span class="badge bg-warning text-dark mb-2">Safe</span>
+                                    <h6 class="fw-bold">Remove from Database</h6>
+                                    <p class="text-muted small mb-0">
+                                        Deletes the server record, all devices and IP
+                                        allocations from Django. The GCP VM keeps running
+                                        and WireGuard is untouched.
+                                    </p>
+                                </div>
+                                <div class="mt-auto">
+                                    <form method="post" action="{% url 'server:delete' server.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning w-100">
+                                            <i class="bi bi-database-x me-1"></i>DB Only
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: Wipe peers + DB -->
+                    <div class="col-md-4">
+                        <div class="card border-danger h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    <span class="badge bg-danger mb-2">Destructive</span>
+                                    <h6 class="fw-bold">Wipe Peers + Remove</h6>
+                                    <p class="text-muted small mb-0">
+                                        SSHes into the VM and removes every peer from
+                                        the live WireGuard interface, then deletes the
+                                        server from the database. VM keeps running.
+                                    </p>
+                                </div>
+                                <div class="mt-auto">
+                                    <form method="post" action="{% url 'server:wipe_peers' server.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger w-100">
+                                            <i class="bi bi-wifi-off me-1"></i>Wipe Peers
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option 3: Destroy VM -->
+                    <div class="col-md-4">
+                        <div class="card h-100 {% if server.gcp_instance_name %}border-danger{% else %}border-secondary opacity-75{% endif %}">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    {% if server.gcp_instance_name %}
+                                        <span class="badge bg-danger mb-2">Irreversible</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary mb-2">Not Available</span>
+                                    {% endif %}
+                                    <h6 class="fw-bold {% if not server.gcp_instance_name %}text-muted{% endif %}">
+                                        Destroy GCP VM
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        {% if server.gcp_instance_name %}
+                                            Terminates <code>{{ server.gcp_instance_name }}</code>
+                                            in <code>{{ server.gcp_zone }}</code> entirely.
+                                            Removes everything - VM, WireGuard, peers, and database records.
+                                        {% else %}
+                                            Only available for servers provisioned through Django
+                                            using the Create GCP VM flow.
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="mt-auto">
+                                    {% if server.gcp_instance_name %}
+                                        <form method="post"
+                                              action="{% url 'server:destroy_vm' server.pk %}"
+                                              id="destroyVmForm"
+                                              enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                            <div class="mb-2">
+                                                <label class="form-label small fw-bold">
+                                                    Service Account JSON Key
+                                                </label>
+                                                <input type="file"
+                                                       name="sa_json_file"
+                                                       class="form-control form-control-sm"
+                                                       accept=".json"
+                                                       required>
+                                                <small class="text-muted">
+                                                    Upload your GCP service account JSON key file.
+                                                </small>
+                                            </div>
+                                            <button type="submit" class="btn btn-danger w-100 submit-btn">
+                                                <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                                                <span class="btn-label">
+                                                    <i class="bi bi-cloud-slash me-1"></i>Destroy VM
+                                                </span>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-secondary w-100" disabled>
+                                            <i class="bi bi-cloud-slash me-1"></i>Not Available
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="alert alert-danger mt-4 mb-0">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    This will delete the server, its entire IP pool
-                    and all associated devices. This cannot be undone.
+                    <strong>{{ server.devices.count }} device(s)</strong> and the full IP pool
+                    will be permanently deleted from the database in all options above.
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
                 <button type="button" class="btn btn-outline-secondary"
                         data-bs-dismiss="modal">Cancel</button>
-                <form method="post" action="{% url 'server:delete' server.pk %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i> Yes, Delete Server
-                    </button>
-                </form>
             </div>
         </div>
     </div>
 </div>
-
 
 <!-- Repopulate Confirm Modal -->
 <div class="modal fade" id="repopulateConfirmModal" tabindex="-1">
@@ -220,8 +344,7 @@
                     <i class="bi bi-arrow-clockwise me-2 text-primary"></i>
                     Repopulate IP Pool
                 </h5>
-                <button type="button" class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>This will clear all free IPs and repopulate from
@@ -249,7 +372,6 @@
     </div>
 </div>
 
-
 <script>
 (function () {
     const resultBanner         = document.getElementById('actionResult');
@@ -266,10 +388,10 @@
         if (data.ip_free === undefined) return;
         const total   = data.ip_free + data.ip_assigned;
         const percent = total > 0 ? Math.round((data.ip_assigned / total) * 100) : 0;
-        document.querySelector('.ip-free').textContent     = data.ip_free;
+        document.querySelector('.ip-free').textContent    = data.ip_free;
         document.querySelector('.ip-assigned').textContent = data.ip_assigned;
-        document.querySelector('.ip-total').textContent    = total;
-        document.querySelector('.ip-percent').textContent  = percent + '% of pool in use';
+        document.querySelector('.ip-total').textContent   = total;
+        document.querySelector('.ip-percent').textContent = percent + '% of pool in use';
         const bar = document.querySelector('.progress-bar');
         if (bar) bar.style.width = percent + '%';
     }
@@ -293,7 +415,7 @@
             showResult(data.message, data.status !== 'ok');
             updatePool(data);
         } catch (err) {
-            showResult('Request failed — ' + err.message, true);
+            showResult('Request failed - ' + err.message, true);
         } finally {
             if (spinner) spinner.classList.add('d-none');
             if (icon)    icon.classList.remove('d-none');
@@ -316,8 +438,30 @@
         if (modal) modal.hide();
         runAjax('{% url "server:ajax_repopulate" server.pk %}', this);
     });
+
+    // Loading state for all delete/action forms in modals
+    document.querySelectorAll('.modal form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            const btn = form.querySelector('button[type="submit"]');
+            if (!btn) return;
+            btn.disabled  = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Working...';
+        });
+    });
+
+    // Loading state for destroy VM form
+    const destroyForm = document.getElementById('destroyVmForm');
+    if (destroyForm) {
+        destroyForm.addEventListener('submit', function () {
+            const btn     = destroyForm.querySelector('.submit-btn');
+            const spinner = btn.querySelector('.spinner');
+            const label   = btn.querySelector('.btn-label');
+            spinner.classList.remove('d-none');
+            label.classList.add('d-none');
+            btn.disabled = true;
+        });
+    }
 })();
 </script>
-
 
 {% endblock %}

@@ -11,7 +11,7 @@
     </a>
     <div>
         <h4 class="fw-bold mb-0">Import Devices</h4>
-        <small class="text-muted">{{ server.name }} — {{ server.ssh_host }}</small>
+        <small class="text-muted">{{ server.name }} - {{ server.ssh_host }}</small>
     </div>
 </div>
 
@@ -23,23 +23,29 @@
 
 {% if not new_peers and not existing_peers %}
 
-    <!-- Upload options -->
+    {% if source_label %}
+        <div class="alert alert-warning">
+            <i class="bi bi-info-circle me-2"></i>
+            No devices found in the config from <strong>{{ source_label }}</strong>.
+            The config may be empty or contain only the interface section.
+        </div>
+    {% endif %}
+
     <div class="row g-4">
 
-        <!-- Upload file -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-1">
-                        <i class="bi bi-upload me-2"></i>
-                        Upload Config File
+                        <i class="bi bi-upload me-2"></i>Upload Config File
                     </h6>
                     <p class="text-muted small mb-3">
                         Download your config from the server and upload it here.
                     </p>
                     <form method="post"
                           action="{% url 'server:import' server.pk %}"
-                          enctype="multipart/form-data">
+                          enctype="multipart/form-data"
+                          class="submit-form">
                         {% csrf_token %}
                         <div class="mb-3">
                             <input type="file"
@@ -47,41 +53,39 @@
                                    class="form-control"
                                    accept=".conf">
                         </div>
-                        <button type="submit" class="btn btn-dark w-100">
-                            <i class="bi bi-search me-1"></i>
-                            Preview Devices
+                        <button type="submit" class="btn btn-dark w-100 submit-btn">
+                            <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                            <span class="btn-label">
+                                <i class="bi bi-search me-1"></i>Preview Devices
+                            </span>
                         </button>
                     </form>
                     <div class="mt-3 p-3 bg-light rounded">
                         <small class="text-muted">
                             To download config from GCP:<br>
-                            <code>
-                                scp {{ server.ssh_user }}@{{ server.ssh_host }}:/etc/wireguard/{{ server.interface_name }}.conf ./{{ server.interface_name }}.conf
-                            </code>
+                            <code>scp {{ server.ssh_user }}@{{ server.ssh_host }}:/etc/wireguard/{{ server.interface_name }}.conf ./{{ server.interface_name }}.conf</code>
                         </small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Import from server directly -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-1">
-                        <i class="bi bi-server me-2"></i>
-                        Import Directly from Server
+                        <i class="bi bi-server me-2"></i>Import Directly from Server
                     </h6>
                     <p class="text-muted small mb-3">
-                        Connects to <code>{{ server.ssh_host }}</code> via SSH
-                        and reads
-                        <code>/etc/wireguard/{{ server.interface_name }}.conf</code>
-                        automatically.
+                        Connects to <code>{{ server.ssh_host }}</code> via SSH and reads
+                        <code>/etc/wireguard/{{ server.interface_name }}.conf</code> automatically.
                     </p>
                     <a href="{% url 'server:import' server.pk %}?from_server=1"
-                       class="btn btn-outline-dark w-100">
-                        <i class="bi bi-lightning me-1"></i>
-                        Import from Server
+                       class="btn btn-outline-dark w-100 ssh-import-btn">
+                        <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                        <span class="btn-label">
+                            <i class="bi bi-lightning me-1"></i>Import from Server
+                        </span>
                     </a>
                     <div class="mt-3 p-3 bg-light rounded">
                         <small class="text-muted">
@@ -97,20 +101,15 @@
 
 {% else %}
 
-    <!-- Preview -->
     <div class="row g-4">
         <div class="col-md-8">
 
-            <!-- New peers -->
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3">
-                        <span class="badge bg-success me-2">
-                            {{ new_peers|length }}
-                        </span>
+                        <span class="badge bg-success me-2">{{ new_peers|length }}</span>
                         New devices ready to import
                     </h6>
-
                     {% if new_peers %}
                         <table class="table table-sm mb-0">
                             <thead class="table-light">
@@ -140,15 +139,12 @@
                 </div>
             </div>
 
-            <!-- Already exists -->
             {% if existing_peers %}
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3">
-                        <span class="badge bg-secondary me-2">
-                            {{ existing_peers|length }}
-                        </span>
-                        Already in database — will be skipped
+                        <span class="badge bg-secondary me-2">{{ existing_peers|length }}</span>
+                        Already in database - will be skipped
                     </h6>
                     <table class="table table-sm mb-0">
                         <thead class="table-light">
@@ -176,12 +172,10 @@
 
         </div>
 
-        <!-- Confirm -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3">Confirm Import</h6>
-
                     <div class="mb-4">
                         <div class="d-flex justify-content-between mb-1">
                             <small class="text-muted">Server</small>
@@ -193,40 +187,65 @@
                         </div>
                         <div class="d-flex justify-content-between mb-1">
                             <small class="text-muted">To import</small>
-                            <small class="text-success fw-bold">
-                                {{ new_peers|length }} devices
-                            </small>
+                            <small class="text-success fw-bold">{{ new_peers|length }} devices</small>
                         </div>
                         <div class="d-flex justify-content-between">
                             <small class="text-muted">To skip</small>
-                            <small class="text-secondary">
-                                {{ existing_peers|length }} devices
-                            </small>
+                            <small class="text-secondary">{{ existing_peers|length }} devices</small>
                         </div>
                     </div>
 
                     {% if new_peers %}
                         <form method="post"
-                              action="{% url 'server:import_commit' server.pk %}">
+                              action="{% url 'server:import_commit' server.pk %}"
+                              class="submit-form">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-dark w-100">
-                                <i class="bi bi-download me-1"></i>
-                                Import {{ new_peers|length }} Devices
+                            <button type="submit" class="btn btn-dark w-100 submit-btn">
+                                <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                                <span class="btn-label">
+                                    <i class="bi bi-download me-1"></i>Import {{ new_peers|length }} Devices
+                                </span>
                             </button>
                         </form>
                     {% endif %}
 
                     <a href="{% url 'server:import' server.pk %}"
                        class="btn btn-outline-secondary w-100 mt-2">
-                        <i class="bi bi-arrow-left me-1"></i>
-                        Upload Different File
+                        <i class="bi bi-arrow-left me-1"></i>Upload Different File
                     </a>
-
                 </div>
             </div>
         </div>
     </div>
 
 {% endif %}
+
+<script>
+(function () {
+    // Loading state for form submit buttons
+    document.querySelectorAll('.submit-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            const btn     = form.querySelector('.submit-btn');
+            const spinner = btn.querySelector('.spinner');
+            const label   = btn.querySelector('.btn-label');
+            spinner.classList.remove('d-none');
+            label.classList.add('d-none');
+            btn.disabled = true;
+        });
+    });
+
+    // Loading state for the SSH import link
+    const sshBtn = document.querySelector('.ssh-import-btn');
+    if (sshBtn) {
+        sshBtn.addEventListener('click', function () {
+            const spinner = sshBtn.querySelector('.spinner');
+            const label   = sshBtn.querySelector('.btn-label');
+            spinner.classList.remove('d-none');
+            label.classList.add('d-none');
+            sshBtn.classList.add('disabled');
+        });
+    }
+})();
+</script>
 
 {% endblock %}

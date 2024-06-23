@@ -65,7 +65,7 @@ def create_device(name: str, device_type: str,
         from apps.invites.emails import send_device_invite
         try:
             send_device_invite(invite, base_url=base_url)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error('Failed to send invite email for device %s: %s', device.name, e)
 
     return device

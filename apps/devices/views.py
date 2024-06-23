@@ -64,6 +64,8 @@ def device_add(request):
                     request,
                     f'Device "{device.name}" created successfully.'
                 )
+                if not form.cleaned_data.get('user'):
+                    messages.warning(request, 'No user assigned - invite email was not sent. Assign a user to send the invite.')
                 return redirect('devices:detail', pk=device.pk)
             except ValueError as e:
                 messages.error(request, str(e))

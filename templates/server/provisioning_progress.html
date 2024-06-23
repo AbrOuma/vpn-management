@@ -1,0 +1,163 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Provisioning {{ server.name }} - WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Provisioning {{ server.name }}</h4>
+        <small class="text-muted" id="statusLabel">Setting up your WireGuard server...</small>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-8">
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div id="spinner" class="spinner-border spinner-border-sm text-dark me-2"></div>
+                    <h6 class="fw-bold mb-0">Live Progress</h6>
+                </div>
+                <pre id="logOutput"
+                     class="bg-dark text-light rounded p-3 mb-0"
+                     style="min-height: 300px; font-size: 0.8rem; white-space: pre-wrap; overflow-y: auto; max-height: 500px;">Waiting for provisioning to start...</pre>
+            </div>
+        </div>
+
+        <div id="successCard" class="card border-0 shadow-sm border-success mt-4 d-none">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Provisioning complete!</h6>
+                        <small class="text-muted">
+                            Your WireGuard server is ready. Redirecting to overview...
+                        </small>
+                    </div>
+                    <a href="{% url 'server:overview' server.pk %}"
+                       class="btn btn-dark ms-auto">
+                        Go to Server Overview
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="failedCard" class="card border-0 shadow-sm border-danger mt-4 d-none">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-x-circle-fill text-danger fs-3"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Provisioning failed</h6>
+                        <small class="text-muted">
+                            Check the log above for the error. You can delete this
+                            server record and try again.
+                        </small>
+                    </div>
+                    <div class="ms-auto d-flex gap-2">
+                        <a href="{% url 'server:overview' server.pk %}"
+                           class="btn btn-outline-secondary btn-sm">
+                            View Server
+                        </a>
+                        <form method="post" action="{% url 'server:delete' server.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                Delete and Retry
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">Server Details</h6>
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td class="text-muted">Name</td>
+                        <td>{{ server.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Host</td>
+                        <td><code>{{ server.ssh_host|default:"Pending..." }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Interface</td>
+                        <td><code>{{ server.interface_name }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Listen Port</td>
+                        <td><code>{{ server.listen_port }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">VPN Subnet</td>
+                        <td><code>{{ server.vpn_subnet }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status</td>
+                        <td id="statusBadge">
+                            <span class="badge bg-warning text-dark">Provisioning</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const logEl       = document.getElementById('logOutput');
+    const spinner     = document.getElementById('spinner');
+    const statusLabel = document.getElementById('statusLabel');
+    const statusBadge = document.getElementById('statusBadge');
+    const successCard = document.getElementById('successCard');
+    const failedCard  = document.getElementById('failedCard');
+    const statusUrl   = '{% url "server:provisioning_status" server.pk %}';
+    const overviewUrl = '{% url "server:overview" server.pk %}';
+
+    let lastLog = '';
+    let pollInterval;
+
+    function poll() {
+        fetch(statusUrl)
+            .then(r => r.json())
+            .then(data => {
+                if (data.log !== lastLog) {
+                    lastLog           = data.log;
+                    logEl.textContent = data.log || 'Waiting...';
+                    logEl.scrollTop   = logEl.scrollHeight;
+                }
+
+                if (data.status === 'provisioned') {
+                    clearInterval(pollInterval);
+                    spinner.classList.add('d-none');
+                    statusLabel.textContent = 'Provisioning complete!';
+                    statusBadge.innerHTML   = '<span class="badge bg-success">Provisioned</span>';
+                    successCard.classList.remove('d-none');
+                    setTimeout(() => { window.location.href = overviewUrl; }, 4000);
+
+                } else if (data.status === 'failed') {
+                    clearInterval(pollInterval);
+                    spinner.classList.add('d-none');
+                    statusLabel.textContent = 'Provisioning failed.';
+                    statusBadge.innerHTML   = '<span class="badge bg-danger">Failed</span>';
+                    failedCard.classList.remove('d-none');
+                }
+            })
+            .catch(() => {
+                // Network hiccup - keep polling
+            });
+    }
+
+    pollInterval = setInterval(poll, 2000);
+    poll();
+})();
+</script>
+
+{% endblock %}

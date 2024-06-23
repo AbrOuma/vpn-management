@@ -9,9 +9,14 @@
         <h4 class="fw-bold mb-0">Servers</h4>
         <small class="text-muted">Manage your WireGuard servers</small>
     </div>
-    <a href="{% url 'server:add' %}" class="btn btn-dark">
-        <i class="bi bi-plus-lg me-1"></i> Add Server
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'server:create_choice' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Create Server
+        </a>
+        <a href="{% url 'server:add' %}" class="btn btn-outline-dark">
+            <i class="bi bi-pencil me-1"></i> Add Manually
+        </a>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -19,14 +24,22 @@
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-
-                <div class="mb-3">
-                    <h6 class="fw-bold mb-0">{{ server.name }}</h6>
-                    <small class="text-muted">
-                        {{ server.ssh_user }}@{{ server.ssh_host }}
-                    </small>
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0">{{ server.name }}</h6>
+                        <small class="text-muted">{{ server.ssh_user }}@{{ server.ssh_host }}</small>
+                    </div>
+                    {% if server.provisioning_status == 'provisioning' %}
+                        <span class="badge bg-warning text-dark">
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            Provisioning
+                        </span>
+                    {% elif server.provisioning_status == 'provisioned' %}
+                        <span class="badge bg-success">Provisioned</span>
+                    {% elif server.provisioning_status == 'failed' %}
+                        <span class="badge bg-danger">Failed</span>
+                    {% endif %}
                 </div>
-
                 <table class="table table-sm mb-4">
                     <tr>
                         <td class="text-muted">Interface</td>
@@ -49,22 +62,27 @@
                         <td>{{ server.devices.count }}</td>
                     </tr>
                 </table>
-
                 <div class="d-flex gap-2 flex-wrap">
-                    <a href="{% url 'server:overview' server.pk %}"
-                       class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-eye me-1"></i> Overview
-                    </a>
-                    <a href="{% url 'server:import' server.pk %}"
-                       class="btn btn-sm btn-outline-dark">
-                        <i class="bi bi-download me-1"></i> Import
-                    </a>
-                    <a href="{% url 'server:setup' server.pk %}"
-                       class="btn btn-sm btn-outline-dark">
-                        <i class="bi bi-pencil me-1"></i> Edit
-                    </a>
+                    {% if server.provisioning_status == 'provisioning' %}
+                        <a href="{% url 'server:provisioning_progress' server.pk %}"
+                           class="btn btn-sm btn-warning">
+                            <i class="bi bi-hourglass-split me-1"></i> View Progress
+                        </a>
+                    {% else %}
+                        <a href="{% url 'server:overview' server.pk %}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-eye me-1"></i> Overview
+                        </a>
+                        <a href="{% url 'server:import' server.pk %}"
+                           class="btn btn-sm btn-outline-dark">
+                            <i class="bi bi-download me-1"></i> Import
+                        </a>
+                        <a href="{% url 'server:setup' server.pk %}"
+                           class="btn btn-sm btn-outline-dark">
+                            <i class="bi bi-pencil me-1"></i> Edit
+                        </a>
+                    {% endif %}
                 </div>
-
             </div>
         </div>
     </div>
@@ -76,7 +94,7 @@
                 <i class="bi bi-server fs-1 d-block mb-3"></i>
                 No servers configured yet.
                 <br>
-                <a href="{% url 'server:add' %}">Add your first server</a>
+                <a href="{% url 'server:create_choice' %}">Create your first server</a>
             </div>
         </div>
     </div>

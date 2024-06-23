@@ -1,0 +1,122 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Create Server - WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'server:list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Create Server</h4>
+        <small class="text-muted">Choose how you want to set up your WireGuard server</small>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4 d-flex flex-column">
+                <div class="mb-4">
+                    <div class="mb-3">
+                        <i class="bi bi-server fs-2 text-dark"></i>
+                    </div>
+                    <h5 class="fw-bold">I already have a VM running</h5>
+                    <p class="text-muted">
+                        You created a VM on GCP (or any other provider) and it is running.
+                        Django will SSH in and install WireGuard, generate keys, write the
+                        config, and start the service automatically.
+                    </p>
+                    <ul class="text-muted small list-unstyled">
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            VM is already running
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            You have SSH access and your private key
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            WireGuard UDP port is open in the firewall
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Works on GCP, AWS, DigitalOcean, or any VPS
+                        </li>
+                    </ul>
+                </div>
+                <div class="mt-auto">
+                    <a href="{% url 'server:provision_existing' %}" class="btn btn-dark w-100">
+                        <i class="bi bi-lightning me-1"></i> Use Existing VM
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4 d-flex flex-column">
+                <div class="mb-4">
+                    <div class="mb-3">
+                        <i class="bi bi-cloud-plus fs-2 text-primary"></i>
+                    </div>
+                    <h5 class="fw-bold">Create a new VM on GCP</h5>
+                    <p class="text-muted">
+                        Django will create a new Compute Engine VM on your GCP project,
+                        generate SSH keys automatically, then install and configure WireGuard
+                        end to end. No terminal work required.
+                    </p>
+                    <ul class="text-muted small list-unstyled">
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            GCP project with billing enabled
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Service account with Compute Instance Admin role
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Service account JSON key downloaded
+                        </li>
+                        <li class="mb-1">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Compute Engine API enabled on the project
+                        </li>
+                    </ul>
+                </div>
+                <div class="mt-auto">
+                    <a href="{% url 'server:provision_gcp' %}" class="btn btn-primary w-100">
+                        <i class="bi bi-cloud-plus me-1"></i> Create GCP VM
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-1">
+                    <i class="bi bi-pencil-square me-2"></i>Manual Configuration
+                </h6>
+                <p class="text-muted small mb-2">
+                    WireGuard is already installed and configured on your server.
+                    Just enter your existing server details and keys directly.
+                </p>
+                <a href="{% url 'server:add' %}" class="btn btn-sm btn-outline-secondary">
+                    Enter details manually
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base_dashboard.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}{{ title }} — WireGuard Manager{% endblock %}
+{% block title %}{{ title }} - WireGuard Manager{% endblock %}
 
 {% block dashboard_content %}
 
@@ -23,111 +23,84 @@
     </div>
 </div>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="setupForm">
 {% csrf_token %}
 <div class="row g-4">
 
-    <!-- Left column -->
     <div class="col-md-7">
 
-        <!-- General -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
-                <h6 class="fw-bold mb-3 text-uppercase text-muted small
-                           tracking-wide">
+                <h6 class="fw-bold mb-3 text-uppercase text-muted small">
                     <i class="bi bi-info-circle me-2"></i>General
                 </h6>
                 {{ form.name|as_crispy_field }}
                 <div class="row">
-                    <div class="col-md-6">
-                        {{ form.interface_name|as_crispy_field }}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.listen_port|as_crispy_field }}
-                    </div>
+                    <div class="col-md-6">{{ form.interface_name|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.listen_port|as_crispy_field }}</div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
-                        {{ form.public_ip|as_crispy_field }}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.mtu|as_crispy_field }}
-                    </div>
+                    <div class="col-md-6">{{ form.public_ip|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.mtu|as_crispy_field }}</div>
                 </div>
                 {{ form.dns_servers|as_crispy_field }}
             </div>
         </div>
 
-        <!-- WireGuard -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3 text-uppercase text-muted small">
                     <i class="bi bi-shield-lock me-2"></i>WireGuard
                 </h6>
                 <div class="row">
-                    <div class="col-md-6">
-                        {{ form.vpn_subnet|as_crispy_field }}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.server_ip|as_crispy_field }}
-                    </div>
+                    <div class="col-md-6">{{ form.vpn_subnet|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.server_ip|as_crispy_field }}</div>
                 </div>
                 {{ form.address|as_crispy_field }}
                 {{ form.public_key|as_crispy_field }}
-
-                <!-- Private key -->
                 <div class="mb-3">
                     {{ form.private_key_input|as_crispy_field }}
                     {% if server and server.private_key %}
                         <small class="text-success">
-                            <i class="bi bi-check-circle me-1"></i>
-                            Private key is set
+                            <i class="bi bi-check-circle me-1"></i>Private key is set
                         </small>
                     {% endif %}
                 </div>
-
                 {{ form.post_up|as_crispy_field }}
                 {{ form.post_down|as_crispy_field }}
             </div>
         </div>
 
-        <!-- SSH -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3 text-uppercase text-muted small">
                     <i class="bi bi-terminal me-2"></i>SSH Connection
                 </h6>
                 <div class="row">
-                    <div class="col-md-8">
-                        {{ form.ssh_host|as_crispy_field }}
-                    </div>
-                    <div class="col-md-4">
-                        {{ form.ssh_user|as_crispy_field }}
-                    </div>
+                    <div class="col-md-8">{{ form.ssh_host|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.ssh_user|as_crispy_field }}</div>
                 </div>
-
-                <!-- SSH key upload -->
                 <div class="mb-3">
                     {{ form.ssh_key_file|as_crispy_field }}
                     {% if server and server.ssh_key_encrypted %}
                         <small class="text-success">
-                            <i class="bi bi-check-circle me-1"></i>
-                            SSH key is uploaded and secured
+                            <i class="bi bi-check-circle me-1"></i>SSH key is uploaded and secured
                         </small>
                     {% else %}
                         <small class="text-warning">
-                            <i class="bi bi-exclamation-triangle me-1"></i>
-                            No SSH key uploaded yet
+                            <i class="bi bi-exclamation-triangle me-1"></i>No SSH key uploaded yet
                         </small>
                     {% endif %}
                 </div>
-
             </div>
         </div>
 
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-dark">
-                <i class="bi bi-check-lg me-1"></i> Save Configuration
+            <button type="submit" class="btn btn-dark" id="saveBtn">
+                <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                <span class="btn-label">
+                    <i class="bi bi-check-lg me-1"></i>Save Configuration
+                </span>
             </button>
             {% if server %}
                 <a href="{% url 'server:overview' server.pk %}"
@@ -139,11 +112,9 @@
         </div>
 
     </div>
-    
-    <!-- Right column — hints -->
+
     <div class="col-md-5">
-        <div class="card border-0 shadow-sm bg-light sticky-top"
-             style="top: 20px;">
+        <div class="card border-0 shadow-sm bg-light sticky-top" style="top: 20px;">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">
                     <i class="bi bi-lightbulb me-2"></i>Quick Reference
@@ -159,8 +130,7 @@
                     </li>
                     <li class="mb-2 pb-2 border-bottom">
                         <strong>Private Key</strong><br>
-                        Run <code>sudo cat /etc/wireguard/wg0.conf</code>
-                        and copy the PrivateKey value
+                        Run <code>sudo cat /etc/wireguard/wg0.conf</code> and copy the PrivateKey value
                     </li>
                     <li class="mb-2 pb-2 border-bottom">
                         <strong>VPN Address</strong><br>
@@ -173,9 +143,7 @@
                     </li>
                     <li class="mb-2">
                         <strong>SSH Key</strong><br>
-                        Upload the private key file e.g.
-                        <code>gcp_key</code> - stored encrypted,
-                        never written to disk
+                        Upload the private key file e.g. <code>gcp_key</code> - stored encrypted, never written to disk
                     </li>
                 </ul>
             </div>
@@ -184,5 +152,16 @@
 
 </div>
 </form>
+
+<script>
+document.getElementById('setupForm').addEventListener('submit', function () {
+    const btn     = document.getElementById('saveBtn');
+    const spinner = btn.querySelector('.spinner');
+    const label   = btn.querySelector('.btn-label');
+    spinner.classList.remove('d-none');
+    label.classList.add('d-none');
+    btn.disabled = true;
+});
+</script>
 
 {% endblock %}

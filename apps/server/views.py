@@ -60,6 +60,152 @@ class ServerConfigForm(forms.ModelForm):
         }
 
 
+class ProvisionExistingForm(forms.Form):
+    name           = forms.CharField(
+                        max_length=100,
+                        label='Server Name',
+                        help_text='A friendly name e.g. GCP Primary'
+                     )
+    ssh_host       = forms.CharField(
+                        max_length=255,
+                        label='VM IP Address',
+                        help_text='External IP of your VM'
+                     )
+    ssh_user       = forms.CharField(
+                        max_length=100,
+                        label='SSH User',
+                        initial='electrical',
+                        help_text='SSH user on the VM'
+                     )
+    ssh_key_file   = forms.FileField(
+                        label='SSH Private Key',
+                        help_text='Upload your SSH private key file'
+                     )
+    interface_name = forms.CharField(
+                        max_length=15,
+                        label='Interface Name',
+                        initial='wg0'
+                     )
+    listen_port    = forms.IntegerField(
+                        label='Listen Port',
+                        initial=51820
+                     )
+    vpn_subnet     = forms.CharField(
+                        max_length=20,
+                        label='VPN Subnet',
+                        initial='10.0.0.0/24',
+                        help_text='e.g. 10.0.0.0/24'
+                     )
+    server_ip      = forms.CharField(
+                        max_length=20,
+                        label='Server IP',
+                        initial='10.0.0.1',
+                        help_text='e.g. 10.0.0.1'
+                     )
+    address        = forms.CharField(
+                        max_length=20,
+                        label='VPN Address',
+                        initial='10.0.0.1/24',
+                        help_text='e.g. 10.0.0.1/24'
+                     )
+    dns_servers    = forms.CharField(
+                        max_length=100,
+                        label='DNS Servers',
+                        initial='1.1.1.1,8.8.8.8',
+                        help_text='Comma separated e.g. 1.1.1.1,8.8.8.8'
+                     )
+    mtu            = forms.IntegerField(
+                        label='MTU',
+                        initial=1420
+                     )
+
+
+GCP_ZONES = [
+    ('us-central1-a',       'us-central1-a (Iowa)'),
+    ('us-east1-b',          'us-east1-b (South Carolina)'),
+    ('us-west1-a',          'us-west1-a (Oregon)'),
+    ('europe-west1-b',      'europe-west1-b (Belgium)'),
+    ('europe-west2-a',      'europe-west2-a (London)'),
+    ('asia-east1-a',        'asia-east1-a (Taiwan)'),
+    ('asia-southeast1-a',   'asia-southeast1-a (Singapore)'),
+    ('africa-south1-a',     'africa-south1-a (Johannesburg)'),
+    ('me-central1-a',       'me-central1-a (Doha)'),
+]
+
+GCP_MACHINE_TYPES = [
+    ('e2-micro',      'e2-micro (free tier eligible, 1 vCPU, 1 GB)'),
+    ('e2-small',      'e2-small (1 vCPU, 2 GB)'),
+    ('e2-medium',     'e2-medium (1 vCPU, 4 GB)'),
+    ('n1-standard-1', 'n1-standard-1 (1 vCPU, 3.75 GB)'),
+]
+
+
+class ProvisionGCPForm(forms.Form):
+    name                 = forms.CharField(
+                            max_length=100,
+                            label='Server Name',
+                            help_text='A friendly name e.g. GCP US East'
+                           )
+    gcp_project_id       = forms.CharField(
+                            max_length=100,
+                            label='GCP Project ID',
+                            help_text='Found in GCP Console > Project Info'
+                           )
+    gcp_zone             = forms.ChoiceField(
+                            choices=GCP_ZONES,
+                            label='Zone'
+                           )
+    machine_type         = forms.ChoiceField(
+                            choices=GCP_MACHINE_TYPES,
+                            label='Machine Type'
+                           )
+    service_account_json = forms.FileField(
+                            label='Service Account JSON Key',
+                            help_text='Download from GCP > IAM > Service Accounts'
+                           )
+    ssh_user             = forms.CharField(
+                            max_length=100,
+                            label='SSH User',
+                            initial='wireguard',
+                            help_text='SSH user Django will create on the VM'
+                           )
+    interface_name       = forms.CharField(
+                            max_length=15,
+                            label='Interface Name',
+                            initial='wg0'
+                           )
+    listen_port          = forms.IntegerField(
+                            label='Listen Port',
+                            initial=51820
+                           )
+    vpn_subnet           = forms.CharField(
+                            max_length=20,
+                            label='VPN Subnet',
+                            initial='10.0.0.0/24'
+                           )
+    server_ip            = forms.CharField(
+                            max_length=20,
+                            label='Server IP',
+                            initial='10.0.0.1'
+                           )
+    address              = forms.CharField(
+                            max_length=20,
+                            label='VPN Address',
+                            initial='10.0.0.1/24'
+                           )
+    dns_servers          = forms.CharField(
+                            max_length=100,
+                            label='DNS Servers',
+                            initial='1.1.1.1,8.8.8.8'
+                           )
+    mtu                  = forms.IntegerField(
+                            label='MTU',
+                            initial=1420
+                           )
+
+
+# Standard server views 
+
 @login_required
 def server_list(request):
     servers = ServerConfig.objects.all().order_by('name')
@@ -140,10 +286,10 @@ def download_ssh_key(request, pk):
 
 @login_required
 def server_overview(request, pk):
-    server      = get_object_or_404(ServerConfig, pk=pk)
-    ip_free     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
-    ip_assigned = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
-    ip_total    = ip_free + ip_assigned
+    server           = get_object_or_404(ServerConfig, pk=pk)
+    ip_free          = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
+    ip_assigned      = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
+    ip_total         = ip_free + ip_assigned
     ip_usage_percent = round((ip_assigned / ip_total) * 100) if ip_total > 0 else 0
 
     return render(request, 'server/overview.html', {
@@ -158,7 +304,7 @@ def server_overview(request, pk):
 @login_required
 def repopulate_ip_pool(request, pk):
     if request.method == 'POST':
-        server = get_object_or_404(ServerConfig, pk=pk)
+        server    = get_object_or_404(ServerConfig, pk=pk)
         from wireguard.ip_allocator import IPAllocator
         deleted   = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
         allocator = IPAllocator(server)
@@ -169,7 +315,7 @@ def repopulate_ip_pool(request, pk):
 
 @login_required
 def import_preview(request, pk):
-    server = get_object_or_404(ServerConfig, pk=pk)
+    server       = get_object_or_404(ServerConfig, pk=pk)
     from wireguard.parser import WireGuardConfigParser
 
     peers        = []
@@ -194,7 +340,7 @@ def import_preview(request, pk):
             parser       = WireGuardConfigParser()
             config       = parser.parse_string(content)
             peers        = config.peers
-            source_label = f'{server.name} — /etc/wireguard/{server.interface_name}.conf'
+            source_label = f'{server.name} - /etc/wireguard/{server.interface_name}.conf'
             request.session[f'import_config_{pk}'] = content
         except Exception as e:
             error = f'Could not connect to server: {e}'
@@ -205,9 +351,11 @@ def import_preview(request, pk):
     existing_peers = [p for p in peers if p.public_key in existing_keys]
 
     return render(request, 'server/import.html', {
-        'server': server, 'new_peers': new_peers,
+        'server':       server,
+        'new_peers':    new_peers,
         'existing_peers': existing_peers,
-        'source_label': source_label, 'error': error,
+        'source_label': source_label,
+        'error':        error,
     })
 
 
@@ -272,7 +420,7 @@ def import_commit(request, pk):
             imported += 1
 
     del request.session[f'import_config_{pk}']
-    messages.success(request, f'Import complete — {imported} imported, {skipped} skipped.')
+    messages.success(request, f'Import complete - {imported} imported, {skipped} skipped.')
     return redirect('devices:list')
 
 
@@ -307,6 +455,7 @@ def server_health(request, pk):
 
 @login_required
 def server_delete(request, pk):
+    """Remove server from DB only - GCP VM untouched."""
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
         from apps.devices.models import Device
@@ -314,14 +463,177 @@ def server_delete(request, pk):
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
         server.delete()
-        messages.success(request, f'Server "{name}" deleted.')
+        messages.success(request, f'Server "{name}" removed from database. GCP VM is untouched.')
         return redirect('server:list')
     return redirect('server:overview', pk=pk)
 
 
-# ----------------------------------------------------------------
-# AJAX endpoints
-# ----------------------------------------------------------------
+@login_required
+def server_wipe_peers(request, pk):
+    """Remove all WireGuard peers from the live VM, then remove server from DB."""
+    server = get_object_or_404(ServerConfig, pk=pk)
+    if request.method == 'POST':
+        from apps.devices.models import Device
+        from wireguard.commands import wipe_all_peers
+        name = server.name
+        try:
+            removed = wipe_all_peers(server, server.interface_name)
+        except Exception as e:
+            messages.error(request, f'Could not wipe peers from VM: {e}')
+            return redirect('server:overview', pk=pk)
+        Device.objects.filter(server=server).delete()
+        IPAllocation.objects.filter(server=server).delete()
+        server.delete()
+        messages.success(
+            request,
+            f'Server "{name}" deleted. {removed} peers wiped from WireGuard on the VM.'
+        )
+        return redirect('server:list')
+    return redirect('server:overview', pk=pk)
+
+
+@login_required
+def server_destroy_vm(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    if request.method == 'POST':
+        if not server.gcp_instance_name or not server.gcp_zone or not server.gcp_project_id:
+            messages.error(
+                request,
+                'This server has no GCP instance details. Use "Remove from Database" instead.'
+            )
+            return redirect('server:overview', pk=pk)
+
+        sa_json_file = request.FILES.get('sa_json_file')
+        if not sa_json_file:
+            messages.error(request, 'Service account JSON file is required to destroy the VM.')
+            return redirect('server:overview', pk=pk)
+
+        from apps.devices.models import Device
+        from wireguard.provisioner import WireGuardProvisioner
+        name        = server.name
+        sa_json_str = sa_json_file.read().decode('utf-8')
+        try:
+            WireGuardProvisioner(server).destroy_gcp_vm(
+                project_id=server.gcp_project_id,
+                zone=server.gcp_zone,
+                instance_name=server.gcp_instance_name,
+                sa_json_str=sa_json_str,
+            )
+        except Exception as e:
+            messages.error(request, f'Failed to destroy VM: {e}')
+            return redirect('server:overview', pk=pk)
+
+        Device.objects.filter(server=server).delete()
+        IPAllocation.objects.filter(server=server).delete()
+        server.delete()
+        messages.success(request, f'Server "{name}" and its GCP VM have been permanently destroyed.')
+        return redirect('server:list')
+    return redirect('server:overview', pk=pk)
+
+
+# Provisioning views 
+
+@login_required
+def create_choice(request):
+    """Landing page: choose between existing VM or create new GCP VM."""
+    return render(request, 'server/create_choice.html')
+
+
+@login_required
+def provision_existing(request):
+    """Provision WireGuard on an existing VM."""
+    form = ProvisionExistingForm()
+    if request.method == 'POST':
+        form = ProvisionExistingForm(request.POST, request.FILES)
+        if form.is_valid():
+            from wireguard.key_manager import encrypt
+            from wireguard.provisioner import WireGuardProvisioner
+            data = form.cleaned_data
+
+            server = ServerConfig.objects.create(
+                name=data['name'],
+                public_ip=data['ssh_host'],
+                ssh_host=data['ssh_host'],
+                ssh_user=data['ssh_user'],
+                interface_name=data['interface_name'],
+                listen_port=data['listen_port'],
+                vpn_subnet=data['vpn_subnet'],
+                server_ip=data['server_ip'],
+                address=data['address'],
+                dns_servers=data['dns_servers'],
+                mtu=data['mtu'],
+                provisioning_status='provisioning',
+                provisioning_log='',
+            )
+
+            ssh_key_file = data.get('ssh_key_file')
+            if ssh_key_file:
+                server.ssh_key_encrypted = encrypt(
+                    ssh_key_file.read().decode('utf-8')
+                )
+                server.save(update_fields=['ssh_key_encrypted'])
+
+            WireGuardProvisioner(server).start_provision_existing_vm()
+            return redirect('server:provisioning_progress', pk=server.pk)
+
+    return render(request, 'server/provision_existing.html', {'form': form})
+
+
+@login_required
+def provision_gcp(request):
+    """Create a GCP VM and provision WireGuard on it."""
+    form = ProvisionGCPForm()
+    if request.method == 'POST':
+        form = ProvisionGCPForm(request.POST, request.FILES)
+        if form.is_valid():
+            from wireguard.provisioner import WireGuardProvisioner
+            data = form.cleaned_data
+
+            server = ServerConfig.objects.create(
+                name=data['name'],
+                ssh_user=data['ssh_user'],
+                interface_name=data['interface_name'],
+                listen_port=data['listen_port'],
+                vpn_subnet=data['vpn_subnet'],
+                server_ip=data['server_ip'],
+                address=data['address'],
+                dns_servers=data['dns_servers'],
+                mtu=data['mtu'],
+                gcp_project_id=data['gcp_project_id'],
+                gcp_zone=data['gcp_zone'],
+                provisioning_status='provisioning',
+                provisioning_log='',
+            )
+
+            sa_json_str = data['service_account_json'].read().decode('utf-8')
+
+            WireGuardProvisioner(server).start_provision_gcp_vm(
+                project_id=data['gcp_project_id'],
+                zone=data['gcp_zone'],
+                machine_type=data['machine_type'],
+                sa_json_str=sa_json_str,
+            )
+            return redirect('server:provisioning_progress', pk=server.pk)
+
+    return render(request, 'server/provision_gcp.html', {'form': form})
+
+
+@login_required
+def provisioning_progress(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    return render(request, 'server/provisioning_progress.html', {'server': server})
+
+
+@login_required
+def ajax_provisioning_status(request, pk):
+    server = get_object_or_404(ServerConfig, pk=pk)
+    return JsonResponse({
+        'status': server.provisioning_status,
+        'log':    server.provisioning_log,
+    })
+
+
+# -- AJAX endpoints --------------------------------------------------
 
 @login_required
 @require_POST
@@ -343,7 +655,7 @@ def ajax_health(request, pk):
         from wireguard.commands import wg_is_running, wg_up
         if not wg_is_running(server, server.interface_name):
             wg_up(server, server.interface_name)
-            return JsonResponse({'status': 'ok', 'message': 'WireGuard was down — restarted successfully.'})
+            return JsonResponse({'status': 'ok', 'message': 'WireGuard was down - restarted successfully.'})
         return JsonResponse({'status': 'ok', 'message': 'WireGuard is already running.'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
@@ -355,9 +667,9 @@ def ajax_repopulate(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     try:
         from wireguard.ip_allocator import IPAllocator
-        deleted   = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
-        allocator = IPAllocator(server)
-        created   = allocator.populate_pool()
+        deleted     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
+        allocator   = IPAllocator(server)
+        created     = allocator.populate_pool()
         ip_free     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
         ip_assigned = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
         return JsonResponse({

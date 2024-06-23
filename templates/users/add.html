@@ -19,15 +19,17 @@
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" id="addUserForm">
                     {% csrf_token %}
                     {{ form|crispy }}
                     <div class="d-flex gap-2 mt-3">
-                        <button type="submit" class="btn btn-dark">
-                            <i class="bi bi-plus-lg me-1"></i> Create User
+                        <button type="submit" class="btn btn-dark" id="addUserBtn">
+                            <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                            <span class="btn-label">
+                                <i class="bi bi-plus-lg me-1"></i>Create User
+                            </span>
                         </button>
-                        <a href="{% url 'users:list' %}"
-                           class="btn btn-outline-secondary">
+                        <a href="{% url 'users:list' %}" class="btn btn-outline-secondary">
                             Cancel
                         </a>
                     </div>
@@ -36,5 +38,16 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('addUserForm').addEventListener('submit', function () {
+    const btn     = document.getElementById('addUserBtn');
+    const spinner = btn.querySelector('.spinner');
+    const label   = btn.querySelector('.btn-label');
+    spinner.classList.remove('d-none');
+    label.classList.add('d-none');
+    btn.disabled = true;
+});
+</script>
 
 {% endblock %}

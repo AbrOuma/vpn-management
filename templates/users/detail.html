@@ -16,7 +16,6 @@
 
 <div class="row g-4">
 
-    <!-- User info -->
     <div class="col-md-5">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
@@ -32,9 +31,7 @@
                     </tr>
                     <tr>
                         <td class="text-muted">Department</td>
-                        <td>
-                            {{ vpnuser.department|default:"—" }}
-                        </td>
+                        <td>{{ vpnuser.department|default:"-" }}</td>
                     </tr>
                     <tr>
                         <td class="text-muted">Status</td>
@@ -53,7 +50,6 @@
                         <td>{{ vpnuser.created_at|date:"d M Y" }}</td>
                     </tr>
                 </table>
-
                 {% if vpnuser.notes %}
                     <div class="mt-3">
                         <small class="text-muted d-block mb-1">Notes</small>
@@ -63,26 +59,28 @@
             </div>
         </div>
 
-        <!-- Actions -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">Actions</h6>
                 <div class="d-grid gap-2">
-
                     {% if vpnuser.status == 'active' %}
-                        <form method="post"
-                              action="{% url 'users:suspend' vpnuser.pk %}">
+                        <form method="post" action="{% url 'users:suspend' vpnuser.pk %}">
                             {% csrf_token %}
-                            <button class="btn btn-warning w-100">
-                                <i class="bi bi-pause-circle me-2"></i>Suspend User
+                            <button class="btn btn-warning w-100 action-btn">
+                                <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                                <span class="btn-label">
+                                    <i class="bi bi-pause-circle me-2"></i>Suspend User
+                                </span>
                             </button>
                         </form>
                     {% elif vpnuser.status == 'suspended' %}
-                        <form method="post"
-                              action="{% url 'users:activate' vpnuser.pk %}">
+                        <form method="post" action="{% url 'users:activate' vpnuser.pk %}">
                             {% csrf_token %}
-                            <button class="btn btn-success w-100">
-                                <i class="bi bi-play-circle me-2"></i>Activate User
+                            <button class="btn btn-success w-100 action-btn">
+                                <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                                <span class="btn-label">
+                                    <i class="bi bi-play-circle me-2"></i>Activate User
+                                </span>
                             </button>
                         </form>
                     {% endif %}
@@ -97,17 +95,15 @@
         </div>
     </div>
 
-    <!-- User devices -->
     <div class="col-md-7">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="fw-bold mb-0">Devices</h6>
                     <a href="{% url 'devices:add' %}" class="btn btn-sm btn-outline-dark">
-                        <i class="bi bi-plus-lg me-1"></i> Add Device
+                        <i class="bi bi-plus-lg me-1"></i>Add Device
                     </a>
                 </div>
-
                 {% if devices %}
                     <table class="table table-sm">
                         <thead class="table-light">
@@ -145,43 +141,39 @@
                         </tbody>
                     </table>
                 {% else %}
-                    <p class="text-muted text-center py-4">
-                        No devices yet.
-                    </p>
+                    <p class="text-muted text-center py-4">No devices yet.</p>
                 {% endif %}
-
             </div>
         </div>
     </div>
 
 </div>
 
-
+<!-- Delete Modal -->
 <div class="modal fade" id="deleteUserModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold text-danger">Delete User</h5>
-                <button type="button" class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>Permanently delete <strong>{{ vpnuser.full_name }}</strong>?</p>
                 <div class="alert alert-danger mb-0">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    This cannot be undone. Their devices will remain
-                    but will be unassigned.
+                    This cannot be undone. Their devices will remain but will be unassigned.
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button"
-                        class="btn btn-outline-secondary"
+                <button type="button" class="btn btn-outline-secondary"
                         data-bs-dismiss="modal">Cancel</button>
-                <form method="post"
-                      action="{% url 'users:delete' vpnuser.pk %}">
+                <form method="post" action="{% url 'users:delete' vpnuser.pk %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-1"></i> Yes, Delete
+                    <button type="submit" class="btn btn-danger action-btn">
+                        <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+                        <span class="btn-label">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete
+                        </span>
                     </button>
                 </form>
             </div>
@@ -189,6 +181,18 @@
     </div>
 </div>
 
-
+<script>
+document.querySelectorAll('form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+        const btn = form.querySelector('.action-btn');
+        if (!btn) return;
+        const spinner = btn.querySelector('.spinner');
+        const label   = btn.querySelector('.btn-label');
+        spinner.classList.remove('d-none');
+        label.classList.add('d-none');
+        btn.disabled = true;
+    });
+});
+</script>
 
 {% endblock %}

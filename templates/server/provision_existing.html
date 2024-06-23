@@ -1,0 +1,132 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Provision Existing VM - WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'server:create_choice' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Provision Existing VM</h4>
+        <small class="text-muted">Django will SSH in and install WireGuard automatically</small>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="provisionForm">
+{% csrf_token %}
+<div class="row g-4">
+
+    <div class="col-md-7">
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3 text-uppercase text-muted small">
+                    <i class="bi bi-info-circle me-2"></i>Server Identity
+                </h6>
+                {{ form.name|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3 text-uppercase text-muted small">
+                    <i class="bi bi-terminal me-2"></i>SSH Access
+                </h6>
+                <div class="row">
+                    <div class="col-md-8">{{ form.ssh_host|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.ssh_user|as_crispy_field }}</div>
+                </div>
+                {{ form.ssh_key_file|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3 text-uppercase text-muted small">
+                    <i class="bi bi-shield-lock me-2"></i>WireGuard Configuration
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">{{ form.interface_name|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.listen_port|as_crispy_field }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">{{ form.vpn_subnet|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.server_ip|as_crispy_field }}</div>
+                </div>
+                {{ form.address|as_crispy_field }}
+                <div class="row">
+                    <div class="col-md-8">{{ form.dns_servers|as_crispy_field }}</div>
+                    <div class="col-md-4">{{ form.mtu|as_crispy_field }}</div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-dark" id="submitBtn">
+            <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
+            <span class="btn-label">
+                <i class="bi bi-lightning me-1"></i>Start Provisioning
+            </span>
+        </button>
+
+    </div>
+
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm bg-light sticky-top" style="top: 20px;">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-list-check me-2"></i>What Django will do
+                </h6>
+                <ol class="text-muted small ps-3">
+                    <li class="mb-2">SSH into your VM using the key you upload</li>
+                    <li class="mb-2">Run <code>apt-get install wireguard iptables</code></li>
+                    <li class="mb-2">Enable IP forwarding</li>
+                    <li class="mb-2">Generate a WireGuard private/public key pair on the VM</li>
+                    <li class="mb-2">Detect the VM network interface automatically</li>
+                    <li class="mb-2">Write <code>/etc/wireguard/wg0.conf</code></li>
+                    <li class="mb-2">Enable and start <code>wg-quick@wg0</code></li>
+                    <li class="mb-2">Save all details and keys to the database</li>
+                    <li class="mb-2">Populate the IP pool from your subnet</li>
+                </ol>
+                <hr>
+                <h6 class="fw-bold mb-2 small">Before you proceed</h6>
+                <ul class="text-muted small list-unstyled">
+                    <li class="mb-1">
+                        <i class="bi bi-shield-check me-2 text-success"></i>
+                        GCP firewall allows UDP port <code>51820</code>
+                    </li>
+                    <li class="mb-1">
+                        <i class="bi bi-shield-check me-2 text-success"></i>
+                        VM is running Debian or Ubuntu
+                    </li>
+                    <li class="mb-1">
+                        <i class="bi bi-shield-check me-2 text-success"></i>
+                        SSH user has <code>sudo</code> access
+                    </li>
+                </ul>
+                <hr>
+                <small class="text-muted">
+                    To open the firewall port in GCP:<br>
+                    <code>gcloud compute firewall-rules create wireguard --allow udp:51820 --target-tags wireguard</code>
+                </small>
+            </div>
+        </div>
+    </div>
+
+</div>
+</form>
+
+<script>
+document.getElementById('provisionForm').addEventListener('submit', function () {
+    const btn     = document.getElementById('submitBtn');
+    const spinner = btn.querySelector('.spinner');
+    const label   = btn.querySelector('.btn-label');
+    spinner.classList.remove('d-none');
+    label.classList.add('d-none');
+    btn.disabled = true;
+});
+</script>
+
+{% endblock %}

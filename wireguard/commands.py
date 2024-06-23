@@ -134,3 +134,22 @@ def ping_peers(server, ip_list: list) -> dict:
             results[ip.strip()] = (status.strip() == 'UP')
 
     return results
+
+def wipe_all_peers(server, interface: str = 'wg0') -> int:
+    """Remove every peer from the live WireGuard interface on the VM."""
+    dump = wg_show_dump(server, interface)
+    removed = 0
+    for line in dump.strip().splitlines()[1:]:  # skip interface line
+        parts = line.split('\t')
+        if len(parts) < 2:
+            continue
+        pubkey = parts[0].strip()
+        if not pubkey:
+            continue
+        run_command(f'sudo wg set {interface} peer {pubkey} remove', server)
+        logger.info('Removed peer %s from %s', pubkey, interface)
+        removed += 1
+    # Persist the change to the config file on disk
+    run_command(f'sudo wg-quick save {interface}', server)
+    logger.info('Wiped %d peers from %s', removed, interface)
+    return removed

@@ -14,7 +14,6 @@
     </a>
 </div>
 
-<!-- Search bar -->
 <div class="mb-3">
     <form method="get">
         <div class="input-group" style="max-width: 400px;">
@@ -30,7 +29,6 @@
     </form>
 </div>
 
-<!-- Users table -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
@@ -50,14 +48,12 @@
                     <td class="ps-4">
                         <div class="fw-semibold">{{ vpnuser.full_name }}</div>
                     </td>
-                    <td>
-                        <small class="text-muted">{{ vpnuser.email }}</small>
-                    </td>
+                    <td><small class="text-muted">{{ vpnuser.email }}</small></td>
                     <td>
                         {% if vpnuser.department %}
                             {{ vpnuser.department }}
                         {% else %}
-                            <span class="text-muted fst-italic">—</span>
+                            <span class="text-muted fst-italic">-</span>
                         {% endif %}
                     </td>
                     <td>

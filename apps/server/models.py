@@ -4,6 +4,12 @@ import ipaddress
 
 class ServerConfig(models.Model):
 
+    class ProvisioningStatus(models.TextChoices):
+        MANUAL       = 'manual',       'Manually Configured'
+        PROVISIONING = 'provisioning', 'Provisioning'
+        PROVISIONED  = 'provisioned',  'Provisioned'
+        FAILED       = 'failed',       'Failed'
+
     name           = models.CharField(
                         max_length=100,
                         default='Primary Server',
@@ -11,7 +17,9 @@ class ServerConfig(models.Model):
                      )
     interface_name = models.CharField(max_length=15, default='wg0')
     public_ip      = models.GenericIPAddressField(
-                        help_text='Your GCP external IP address'
+                        help_text='Your GCP external IP address',
+                        blank=True,
+                        null=True,
                      )
     listen_port    = models.PositiveIntegerField(default=51820)
     vpn_subnet     = models.CharField(max_length=20, default='10.0.0.0/24')
@@ -21,7 +29,10 @@ class ServerConfig(models.Model):
                         default='10.0.0.1/24',
                         help_text='Server VPN address with mask e.g. 10.0.0.1/24'
                      )
-    public_key     = models.TextField(help_text='WireGuard server public key')
+    public_key     = models.TextField(
+                        help_text='WireGuard server public key',
+                        blank=True,
+                     )
     private_key    = models.TextField(
                         help_text='Encrypted WireGuard server private key',
                         blank=True
@@ -50,11 +61,23 @@ class ServerConfig(models.Model):
     ssh_user       = models.CharField(max_length=100, default='electrical')
     ssh_key_path   = models.CharField(max_length=500, default='gcp_key')
     ssh_key_encrypted = models.TextField(
-        blank=True,
-        help_text='Encrypted SSH private key content'
-    )
-    created_at     = models.DateTimeField(auto_now_add=True)
-    updated_at     = models.DateTimeField(auto_now=True)
+                        blank=True,
+                        help_text='Encrypted SSH private key content'
+                     )
+
+    # Provisioning
+    provisioning_status = models.CharField(
+                            max_length=15,
+                            choices=ProvisioningStatus.choices,
+                            default=ProvisioningStatus.MANUAL,
+                          )
+    provisioning_log    = models.TextField(blank=True, default='')
+    gcp_instance_name   = models.CharField(max_length=100, blank=True)
+    gcp_zone            = models.CharField(max_length=50, blank=True)
+    gcp_project_id      = models.CharField(max_length=100, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Server Configuration'
