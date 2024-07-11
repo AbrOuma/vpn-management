@@ -8,7 +8,7 @@ def staff_required(view_func):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
         if not request.user.is_staff:
-            return redirect('portal:index')
+            return redirect('portal:login')
         return view_func(request, *args, **kwargs)
     return wrapper
 

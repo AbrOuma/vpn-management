@@ -61,7 +61,7 @@ def login_view(request):
     if request.user.is_authenticated:
         if request.user.is_staff:
             return redirect('devices:list')
-        return redirect('portal:index')
+        return redirect('portal:login')
 
     form = LoginForm()
 
@@ -77,7 +77,7 @@ def login_view(request):
                 messages.success(request, f'Welcome back, {user.full_name}.')
                 if user.is_staff:
                     return redirect('devices:list')
-                return redirect('portal:index')
+                return redirect('portal:login')
             else:
                 messages.error(request, 'Invalid email or password.')
 
