@@ -1,0 +1,166 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Settings — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Settings</h4>
+</div>
+
+<div class="row g-4">
+
+    <!-- Personal token card -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="mb-0"><i class="bi bi-key me-2"></i>Your API Token</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Use this token to authenticate API requests. Include it in the
+                    <code>Authorization</code> header as <code>Token &lt;your_token&gt;</code>.
+                </p>
+
+                {% if token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Your Token</label>
+                        <div class="input-group">
+                            <input type="password"
+                                   id="tokenField"
+                                   class="form-control font-monospace"
+                                   value="{{ token.key }}"
+                                   readonly>
+                            <button class="btn btn-outline-secondary"
+                                    type="button"
+                                    onclick="toggleToken()">
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary"
+                                    type="button"
+                                    onclick="copyToken('{{ token.key }}')">
+                                <i class="bi bi-clipboard" id="copyIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Created: {{ token.created }}</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <form method="post" action="{% url 'accounts:token_generate' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'accounts:token_revoke' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="bi bi-trash me-1"></i> Revoke
+                            </button>
+                        </form>
+                    </div>
+
+                {% else %}
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-info-circle me-2"></i>
+                        You don't have an API token yet.
+                    </div>
+                    <form method="post" action="{% url 'accounts:token_generate' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle me-1"></i> Generate Token
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin token management -->
+    {% if request.user.is_staff and user_tokens is not None %}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>User API Tokens</h6>
+                <span class="badge bg-secondary">Admin only</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">User</th>
+                            <th>Email</th>
+                            <th>Token Status</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in user_tokens %}
+                        <tr>
+                            <td class="ps-3">{{ entry.user.full_name }}</td>
+                            <td class="text-muted small">{{ entry.user.email }}</td>
+                            <td>
+                                {% if entry.token %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-light text-secondary">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">
+                                {% if entry.token %}
+                                    {{ entry.token.created|date:"M d, Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                {% if entry.token %}
+                                    <form method="post"
+                                          action="{% url 'accounts:admin_token_revoke' entry.user.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash me-1"></i> Revoke
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No other users found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleToken() {
+    const field = document.getElementById('tokenField');
+    const icon = document.getElementById('toggleIcon');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        field.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function copyToken(token) {
+    navigator.clipboard.writeText(token).then(() => {
+        const icon = document.getElementById('copyIcon');
+        icon.className = 'bi bi-clipboard-check';
+        setTimeout(() => icon.className = 'bi bi-clipboard', 2000);
+    });
+}
+</script>
+{% endblock %}

@@ -11,5 +11,6 @@ urlpatterns = [
     path('server/', include('apps.server.urls')),
     path('connect/', include('apps.invites.urls')),
     path('portal/', include('apps.portal.urls')),
+    path('settings/', include('apps.accounts.urls')),
     path('api/v1/', include('apps.api.urls', namespace='api')),
 ]

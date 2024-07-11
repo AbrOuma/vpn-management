@@ -29,6 +29,11 @@
             <i class="bi bi-server me-2"></i> Servers
         </a>
 
+        <a href="{% url 'accounts:settings' %}"
+           class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <i class="bi bi-gear me-2"></i> Settings
+        </a>
+
         <hr style="border-color: #2a2a4a;">
 
         <a href="/portal/" target="_blank">
