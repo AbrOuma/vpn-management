@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django import forms
 from .models import ServerConfig, IPAllocation
+from apps.accounts.decorators import staff_required, write_required
 
 
 class ServerConfigForm(forms.ModelForm):
@@ -61,63 +61,17 @@ class ServerConfigForm(forms.ModelForm):
 
 
 class ProvisionExistingForm(forms.Form):
-    name           = forms.CharField(
-                        max_length=100,
-                        label='Server Name',
-                        help_text='A friendly name e.g. GCP Primary'
-                     )
-    ssh_host       = forms.CharField(
-                        max_length=255,
-                        label='VM IP Address',
-                        help_text='External IP of your VM'
-                     )
-    ssh_user       = forms.CharField(
-                        max_length=100,
-                        label='SSH User',
-                        initial='electrical',
-                        help_text='SSH user on the VM'
-                     )
-    ssh_key_file   = forms.FileField(
-                        label='SSH Private Key',
-                        help_text='Upload your SSH private key file'
-                     )
-    interface_name = forms.CharField(
-                        max_length=15,
-                        label='Interface Name',
-                        initial='wg0'
-                     )
-    listen_port    = forms.IntegerField(
-                        label='Listen Port',
-                        initial=51820
-                     )
-    vpn_subnet     = forms.CharField(
-                        max_length=20,
-                        label='VPN Subnet',
-                        initial='10.0.0.0/24',
-                        help_text='e.g. 10.0.0.0/24'
-                     )
-    server_ip      = forms.CharField(
-                        max_length=20,
-                        label='Server IP',
-                        initial='10.0.0.1',
-                        help_text='e.g. 10.0.0.1'
-                     )
-    address        = forms.CharField(
-                        max_length=20,
-                        label='VPN Address',
-                        initial='10.0.0.1/24',
-                        help_text='e.g. 10.0.0.1/24'
-                     )
-    dns_servers    = forms.CharField(
-                        max_length=100,
-                        label='DNS Servers',
-                        initial='1.1.1.1,8.8.8.8',
-                        help_text='Comma separated e.g. 1.1.1.1,8.8.8.8'
-                     )
-    mtu            = forms.IntegerField(
-                        label='MTU',
-                        initial=1420
-                     )
+    name           = forms.CharField(max_length=100, label='Server Name', help_text='A friendly name e.g. GCP Primary')
+    ssh_host       = forms.CharField(max_length=255, label='VM IP Address', help_text='External IP of your VM')
+    ssh_user       = forms.CharField(max_length=100, label='SSH User', initial='electrical', help_text='SSH user on the VM')
+    ssh_key_file   = forms.FileField(label='SSH Private Key', help_text='Upload your SSH private key file')
+    interface_name = forms.CharField(max_length=15, label='Interface Name', initial='wg0')
+    listen_port    = forms.IntegerField(label='Listen Port', initial=51820)
+    vpn_subnet     = forms.CharField(max_length=20, label='VPN Subnet', initial='10.0.0.0/24', help_text='e.g. 10.0.0.0/24')
+    server_ip      = forms.CharField(max_length=20, label='Server IP', initial='10.0.0.1', help_text='e.g. 10.0.0.1')
+    address        = forms.CharField(max_length=20, label='VPN Address', initial='10.0.0.1/24', help_text='e.g. 10.0.0.1/24')
+    dns_servers    = forms.CharField(max_length=100, label='DNS Servers', initial='1.1.1.1,8.8.8.8', help_text='Comma separated e.g. 1.1.1.1,8.8.8.8')
+    mtu            = forms.IntegerField(label='MTU', initial=1420)
 
 
 GCP_ZONES = [
@@ -141,78 +95,31 @@ GCP_MACHINE_TYPES = [
 
 
 class ProvisionGCPForm(forms.Form):
-    name                 = forms.CharField(
-                            max_length=100,
-                            label='Server Name',
-                            help_text='A friendly name e.g. GCP US East'
-                           )
-    gcp_project_id       = forms.CharField(
-                            max_length=100,
-                            label='GCP Project ID',
-                            help_text='Found in GCP Console > Project Info'
-                           )
-    gcp_zone             = forms.ChoiceField(
-                            choices=GCP_ZONES,
-                            label='Zone'
-                           )
-    machine_type         = forms.ChoiceField(
-                            choices=GCP_MACHINE_TYPES,
-                            label='Machine Type'
-                           )
-    service_account_json = forms.FileField(
-                            label='Service Account JSON Key',
-                            help_text='Download from GCP > IAM > Service Accounts'
-                           )
-    ssh_user             = forms.CharField(
-                            max_length=100,
-                            label='SSH User',
-                            initial='wireguard',
-                            help_text='SSH user Django will create on the VM'
-                           )
-    interface_name       = forms.CharField(
-                            max_length=15,
-                            label='Interface Name',
-                            initial='wg0'
-                           )
-    listen_port          = forms.IntegerField(
-                            label='Listen Port',
-                            initial=51820
-                           )
-    vpn_subnet           = forms.CharField(
-                            max_length=20,
-                            label='VPN Subnet',
-                            initial='10.0.0.0/24'
-                           )
-    server_ip            = forms.CharField(
-                            max_length=20,
-                            label='Server IP',
-                            initial='10.0.0.1'
-                           )
-    address              = forms.CharField(
-                            max_length=20,
-                            label='VPN Address',
-                            initial='10.0.0.1/24'
-                           )
-    dns_servers          = forms.CharField(
-                            max_length=100,
-                            label='DNS Servers',
-                            initial='1.1.1.1,8.8.8.8'
-                           )
-    mtu                  = forms.IntegerField(
-                            label='MTU',
-                            initial=1420
-                           )
+    name                 = forms.CharField(max_length=100, label='Server Name', help_text='A friendly name e.g. GCP US East')
+    gcp_project_id       = forms.CharField(max_length=100, label='GCP Project ID', help_text='Found in GCP Console > Project Info')
+    gcp_zone             = forms.ChoiceField(choices=GCP_ZONES, label='Zone')
+    machine_type         = forms.ChoiceField(choices=GCP_MACHINE_TYPES, label='Machine Type')
+    service_account_json = forms.FileField(label='Service Account JSON Key', help_text='Download from GCP > IAM > Service Accounts')
+    ssh_user             = forms.CharField(max_length=100, label='SSH User', initial='wireguard', help_text='SSH user Django will create on the VM')
+    interface_name       = forms.CharField(max_length=15, label='Interface Name', initial='wg0')
+    listen_port          = forms.IntegerField(label='Listen Port', initial=51820)
+    vpn_subnet           = forms.CharField(max_length=20, label='VPN Subnet', initial='10.0.0.0/24')
+    server_ip            = forms.CharField(max_length=20, label='Server IP', initial='10.0.0.1')
+    address              = forms.CharField(max_length=20, label='VPN Address', initial='10.0.0.1/24')
+    dns_servers          = forms.CharField(max_length=100, label='DNS Servers', initial='1.1.1.1,8.8.8.8')
+    mtu                  = forms.IntegerField(label='MTU', initial=1420)
 
 
-# Standard server views 
+# Standard server views
 
-@login_required
+@staff_required
 def server_list(request):
     servers = ServerConfig.objects.all().order_by('name')
     return render(request, 'server/list.html', {'servers': servers})
 
 
-@login_required
+@staff_required
+@write_required
 def server_add(request):
     form = ServerConfigForm()
     if request.method == 'POST':
@@ -229,16 +136,15 @@ def server_add(request):
             ssh_key_file = form.cleaned_data.get('ssh_key_file')
             if ssh_key_file:
                 from wireguard.key_manager import encrypt
-                server.ssh_key_encrypted = encrypt(
-                    ssh_key_file.read().decode('utf-8')
-                )
+                server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
             server.save()
             messages.success(request, f'Server "{server.name}" added.')
             return redirect('server:list')
     return render(request, 'server/setup.html', {'form': form, 'title': 'Add Server'})
 
 
-@login_required
+@staff_required
+@write_required
 def server_setup(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     form   = ServerConfigForm(instance=server)
@@ -257,9 +163,7 @@ def server_setup(request, pk):
             ssh_key_file = form.cleaned_data.get('ssh_key_file')
             if ssh_key_file:
                 from wireguard.key_manager import encrypt
-                server.ssh_key_encrypted = encrypt(
-                    ssh_key_file.read().decode('utf-8')
-                )
+                server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
             server.save()
             messages.success(request, 'Server configuration saved.')
             return redirect('server:overview', pk=pk)
@@ -269,7 +173,7 @@ def server_setup(request, pk):
     })
 
 
-@login_required
+@staff_required
 def download_ssh_key(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     if not server.ssh_key_encrypted:
@@ -284,7 +188,7 @@ def download_ssh_key(request, pk):
     return response
 
 
-@login_required
+@staff_required
 def server_overview(request, pk):
     server           = get_object_or_404(ServerConfig, pk=pk)
     ip_free          = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
@@ -301,7 +205,8 @@ def server_overview(request, pk):
     })
 
 
-@login_required
+@staff_required
+@write_required
 def repopulate_ip_pool(request, pk):
     if request.method == 'POST':
         server    = get_object_or_404(ServerConfig, pk=pk)
@@ -313,7 +218,7 @@ def repopulate_ip_pool(request, pk):
     return redirect('server:overview', pk=pk)
 
 
-@login_required
+@staff_required
 def import_preview(request, pk):
     server       = get_object_or_404(ServerConfig, pk=pk)
     from wireguard.parser import WireGuardConfigParser
@@ -351,15 +256,16 @@ def import_preview(request, pk):
     existing_peers = [p for p in peers if p.public_key in existing_keys]
 
     return render(request, 'server/import.html', {
-        'server':       server,
-        'new_peers':    new_peers,
+        'server':         server,
+        'new_peers':      new_peers,
         'existing_peers': existing_peers,
-        'source_label': source_label,
-        'error':        error,
+        'source_label':   source_label,
+        'error':          error,
     })
 
 
-@login_required
+@staff_required
+@write_required
 def import_commit(request, pk):
     if request.method != 'POST':
         return redirect('server:import', pk=pk)
@@ -424,7 +330,8 @@ def import_commit(request, pk):
     return redirect('devices:list')
 
 
-@login_required
+@staff_required
+@write_required
 def sync_server(request, pk):
     if request.method == 'POST':
         server = get_object_or_404(ServerConfig, pk=pk)
@@ -437,7 +344,8 @@ def sync_server(request, pk):
     return redirect('server:overview', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def server_health(request, pk):
     if request.method == 'POST':
         server = get_object_or_404(ServerConfig, pk=pk)
@@ -453,9 +361,9 @@ def server_health(request, pk):
     return redirect('server:overview', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def server_delete(request, pk):
-    """Remove server from DB only - GCP VM untouched."""
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
         from apps.devices.models import Device
@@ -468,9 +376,9 @@ def server_delete(request, pk):
     return redirect('server:overview', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def server_wipe_peers(request, pk):
-    """Remove all WireGuard peers from the live VM, then remove server from DB."""
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
         from apps.devices.models import Device
@@ -484,23 +392,18 @@ def server_wipe_peers(request, pk):
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
         server.delete()
-        messages.success(
-            request,
-            f'Server "{name}" deleted. {removed} peers wiped from WireGuard on the VM.'
-        )
+        messages.success(request, f'Server "{name}" deleted. {removed} peers wiped from WireGuard on the VM.')
         return redirect('server:list')
     return redirect('server:overview', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def server_destroy_vm(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
         if not server.gcp_instance_name or not server.gcp_zone or not server.gcp_project_id:
-            messages.error(
-                request,
-                'This server has no GCP instance details. Use "Remove from Database" instead.'
-            )
+            messages.error(request, 'This server has no GCP instance details. Use "Remove from Database" instead.')
             return redirect('server:overview', pk=pk)
 
         sa_json_file = request.FILES.get('sa_json_file')
@@ -531,17 +434,17 @@ def server_destroy_vm(request, pk):
     return redirect('server:overview', pk=pk)
 
 
-# Provisioning views 
+# Provisioning views
 
-@login_required
+@staff_required
+@write_required
 def create_choice(request):
-    """Landing page: choose between existing VM or create new GCP VM."""
     return render(request, 'server/create_choice.html')
 
 
-@login_required
+@staff_required
+@write_required
 def provision_existing(request):
-    """Provision WireGuard on an existing VM."""
     form = ProvisionExistingForm()
     if request.method == 'POST':
         form = ProvisionExistingForm(request.POST, request.FILES)
@@ -568,9 +471,7 @@ def provision_existing(request):
 
             ssh_key_file = data.get('ssh_key_file')
             if ssh_key_file:
-                server.ssh_key_encrypted = encrypt(
-                    ssh_key_file.read().decode('utf-8')
-                )
+                server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
                 server.save(update_fields=['ssh_key_encrypted'])
 
             WireGuardProvisioner(server).start_provision_existing_vm()
@@ -579,9 +480,9 @@ def provision_existing(request):
     return render(request, 'server/provision_existing.html', {'form': form})
 
 
-@login_required
+@staff_required
+@write_required
 def provision_gcp(request):
-    """Create a GCP VM and provision WireGuard on it."""
     form = ProvisionGCPForm()
     if request.method == 'POST':
         form = ProvisionGCPForm(request.POST, request.FILES)
@@ -606,7 +507,6 @@ def provision_gcp(request):
             )
 
             sa_json_str = data['service_account_json'].read().decode('utf-8')
-
             WireGuardProvisioner(server).start_provision_gcp_vm(
                 project_id=data['gcp_project_id'],
                 zone=data['gcp_zone'],
@@ -618,13 +518,13 @@ def provision_gcp(request):
     return render(request, 'server/provision_gcp.html', {'form': form})
 
 
-@login_required
+@staff_required
 def provisioning_progress(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     return render(request, 'server/provisioning_progress.html', {'server': server})
 
 
-@login_required
+@staff_required
 def ajax_provisioning_status(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     return JsonResponse({
@@ -633,9 +533,10 @@ def ajax_provisioning_status(request, pk):
     })
 
 
-# -- AJAX endpoints --------------------------------------------------
+# AJAX endpoints
 
-@login_required
+@staff_required
+@write_required
 @require_POST
 def ajax_sync(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
@@ -647,7 +548,8 @@ def ajax_sync(request, pk):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
-@login_required
+@staff_required
+@write_required
 @require_POST
 def ajax_health(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
@@ -661,7 +563,8 @@ def ajax_health(request, pk):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
-@login_required
+@staff_required
+@write_required
 @require_POST
 def ajax_repopulate(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)

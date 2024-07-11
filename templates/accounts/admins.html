@@ -1,0 +1,92 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Admins — WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Admins</h4>
+    <a href="{% url 'accounts:admin_add' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i> Add Admin
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for admin in admins %}
+                <tr>
+                    <td class="ps-3">{{ admin.full_name }}</td>
+                    <td class="text-muted small">{{ admin.email }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if admin.role == 'network_admin' %}bg-primary
+                            {% elif admin.role == 'read_only' %}bg-secondary
+                            {% else %}bg-dark{% endif %}">
+                            {{ admin.get_role_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if admin.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'accounts:admin_edit' admin.pk %}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if admin.is_active %}
+                                <form method="post"
+                                      action="{% url 'accounts:admin_deactivate' admin.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post"
+                                      action="{% url 'accounts:admin_activate' admin.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                            {% if not admin.is_superuser %}
+                                <form method="post"
+                                      action="{% url 'accounts:admin_delete' admin.pk %}"
+                                      onsubmit="return confirm('Delete {{ admin.full_name }}? This cannot be undone.')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        No admins found. <a href="{% url 'accounts:admin_add' %}">Add one</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

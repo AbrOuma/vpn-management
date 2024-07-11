@@ -1,12 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Device
 from .forms import DeviceForm, DeviceEditForm
 from .services import create_device
+from apps.accounts.decorators import staff_required, write_required
 
 
-@login_required
+@staff_required
 def device_list(request):
     from apps.server.models import ServerConfig
     from wireguard.commands import ping_peers
@@ -16,7 +16,6 @@ def device_list(request):
         'devices__allocated_ip',
     ).order_by('name')
 
-    # Ping all active devices per server in parallel - ~1 second total
     online_ips = set()
     for server in servers:
         try:
@@ -28,7 +27,7 @@ def device_list(request):
             results    = ping_peers(server, ip_list)
             online_ips.update(ip for ip, up in results.items() if up)
         except Exception:
-            pass  # SSH failure never blocks the page
+            pass
 
     total_devices  = Device.objects.count()
     active_count   = Device.objects.filter(status=Device.Status.ACTIVE).count()
@@ -45,7 +44,8 @@ def device_list(request):
     })
 
 
-@login_required
+@staff_required
+@write_required
 def device_add(request):
     form = DeviceForm()
 
@@ -60,10 +60,7 @@ def device_add(request):
                     user        = form.cleaned_data['user'],
                     base_url    = request.build_absolute_uri('/').rstrip('/'),
                 )
-                messages.success(
-                    request,
-                    f'Device "{device.name}" created successfully.'
-                )
+                messages.success(request, f'Device "{device.name}" created successfully.')
                 if not form.cleaned_data.get('user'):
                     messages.warning(request, 'No user assigned - invite email was not sent. Assign a user to send the invite.')
                 return redirect('devices:detail', pk=device.pk)
@@ -73,7 +70,7 @@ def device_add(request):
     return render(request, 'devices/add.html', {'form': form})
 
 
-@login_required
+@staff_required
 def device_detail(request, pk):
     device = get_object_or_404(
         Device.objects.select_related('user', 'allocated_ip'),
@@ -82,7 +79,8 @@ def device_detail(request, pk):
     return render(request, 'devices/detail.html', {'device': device})
 
 
-@login_required
+@staff_required
+@write_required
 def device_enable(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if request.method == 'POST':
@@ -92,7 +90,8 @@ def device_enable(request, pk):
     return redirect('devices:detail', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def device_disable(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if request.method == 'POST':
@@ -102,7 +101,8 @@ def device_disable(request, pk):
     return redirect('devices:detail', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def device_revoke(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if request.method == 'POST':
@@ -112,9 +112,8 @@ def device_revoke(request, pk):
     return redirect('devices:detail', pk=pk)
 
 
-
-
-@login_required
+@staff_required
+@write_required
 def device_edit(request, pk):
     device = get_object_or_404(Device, pk=pk)
     form   = DeviceEditForm(instance=device)
@@ -132,7 +131,8 @@ def device_edit(request, pk):
     })
 
 
-@login_required
+@staff_required
+@write_required
 def device_delete(request, pk):
     device = get_object_or_404(Device, pk=pk)
 
@@ -141,14 +141,11 @@ def device_delete(request, pk):
         allocation  = device.allocated_ip
         server      = device.server
 
-        # Step 1 — Free the IP
         from wireguard.ip_allocator import IPAllocator
         IPAllocator(server).release(allocation)
 
-        # Step 2 — Delete from database
         device.delete()
 
-        # Step 3 — Sync WireGuard (removes peer from server)
         try:
             from wireguard.manager import WireGuardManager
             WireGuardManager(server).sync_all()

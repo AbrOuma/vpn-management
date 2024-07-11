@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.db import models
 from django.contrib import messages
+from django.db import models
 from django import forms
 from .models import VPNUser, Department
+from apps.accounts.decorators import staff_required, write_required
 
 
 class VPNUserForm(forms.ModelForm):
@@ -15,7 +15,7 @@ class VPNUserForm(forms.ModelForm):
         }
 
 
-@login_required
+@staff_required
 def user_list(request):
     users = VPNUser.objects.exclude(status=VPNUser.Status.DELETED)
 
@@ -27,7 +27,8 @@ def user_list(request):
     return render(request, 'users/list.html', {'users': users})
 
 
-@login_required
+@staff_required
+@write_required
 def user_add(request):
     form = VPNUserForm()
 
@@ -41,7 +42,7 @@ def user_add(request):
     return render(request, 'users/add.html', {'form': form})
 
 
-@login_required
+@staff_required
 def user_detail(request, pk):
     vpnuser = get_object_or_404(VPNUser, pk=pk)
     devices = vpnuser.devices.select_related('allocated_ip').all()
@@ -52,7 +53,8 @@ def user_detail(request, pk):
     })
 
 
-@login_required
+@staff_required
+@write_required
 def user_suspend(request, pk):
     vpnuser = get_object_or_404(VPNUser, pk=pk)
     if request.method == 'POST':
@@ -62,7 +64,8 @@ def user_suspend(request, pk):
     return redirect('users:detail', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def user_activate(request, pk):
     vpnuser = get_object_or_404(VPNUser, pk=pk)
     if request.method == 'POST':
@@ -72,7 +75,8 @@ def user_activate(request, pk):
     return redirect('users:detail', pk=pk)
 
 
-@login_required
+@staff_required
+@write_required
 def user_delete(request, pk):
     user = get_object_or_404(VPNUser, pk=pk)
     if request.method == 'POST':
@@ -83,7 +87,7 @@ def user_delete(request, pk):
     return redirect('users:detail', pk=pk)
 
 
-@login_required
+@staff_required
 def department_list(request):
     departments = Department.objects.annotate(
         user_count=models.Count('users')
@@ -93,7 +97,8 @@ def department_list(request):
     })
 
 
-@login_required
+@staff_required
+@write_required
 def department_add(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -106,7 +111,8 @@ def department_add(request):
     return redirect('users:departments')
 
 
-@login_required
+@staff_required
+@write_required
 def department_delete(request, pk):
     if request.method == 'POST':
         dept = get_object_or_404(Department, pk=pk)
