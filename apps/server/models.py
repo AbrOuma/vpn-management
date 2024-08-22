@@ -75,6 +75,8 @@ class ServerConfig(models.Model):
     gcp_instance_name   = models.CharField(max_length=100, blank=True)
     gcp_zone            = models.CharField(max_length=50, blank=True)
     gcp_project_id      = models.CharField(max_length=100, blank=True)
+    aws_instance_id     = models.CharField(max_length=100, blank=True)
+    aws_region          = models.CharField(max_length=50, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

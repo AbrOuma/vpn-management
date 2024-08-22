@@ -7,6 +7,8 @@ from .models import ServerConfig, IPAllocation
 from apps.accounts.decorators import staff_required, write_required
 
 
+# Forms
+
 class ServerConfigForm(forms.ModelForm):
     ssh_key_file = forms.FileField(
         required=False,
@@ -75,15 +77,15 @@ class ProvisionExistingForm(forms.Form):
 
 
 GCP_ZONES = [
-    ('us-central1-a',       'us-central1-a (Iowa)'),
-    ('us-east1-b',          'us-east1-b (South Carolina)'),
-    ('us-west1-a',          'us-west1-a (Oregon)'),
-    ('europe-west1-b',      'europe-west1-b (Belgium)'),
-    ('europe-west2-a',      'europe-west2-a (London)'),
-    ('asia-east1-a',        'asia-east1-a (Taiwan)'),
-    ('asia-southeast1-a',   'asia-southeast1-a (Singapore)'),
-    ('africa-south1-a',     'africa-south1-a (Johannesburg)'),
-    ('me-central1-a',       'me-central1-a (Doha)'),
+    ('us-central1-a',     'us-central1-a (Iowa)'),
+    ('us-east1-b',        'us-east1-b (South Carolina)'),
+    ('us-west1-a',        'us-west1-a (Oregon)'),
+    ('europe-west1-b',    'europe-west1-b (Belgium)'),
+    ('europe-west2-a',    'europe-west2-a (London)'),
+    ('asia-east1-a',      'asia-east1-a (Taiwan)'),
+    ('asia-southeast1-a', 'asia-southeast1-a (Singapore)'),
+    ('africa-south1-a',   'africa-south1-a (Johannesburg)'),
+    ('me-central1-a',     'me-central1-a (Doha)'),
 ]
 
 GCP_MACHINE_TYPES = [
@@ -91,6 +93,28 @@ GCP_MACHINE_TYPES = [
     ('e2-small',      'e2-small (1 vCPU, 2 GB)'),
     ('e2-medium',     'e2-medium (1 vCPU, 4 GB)'),
     ('n1-standard-1', 'n1-standard-1 (1 vCPU, 3.75 GB)'),
+]
+
+AWS_REGIONS = [
+    ('us-east-1',      'us-east-1 (N. Virginia)'),
+    ('us-east-2',      'us-east-2 (Ohio)'),
+    ('us-west-1',      'us-west-1 (N. California)'),
+    ('us-west-2',      'us-west-2 (Oregon)'),
+    ('eu-west-1',      'eu-west-1 (Ireland)'),
+    ('eu-west-2',      'eu-west-2 (London)'),
+    ('eu-central-1',   'eu-central-1 (Frankfurt)'),
+    ('ap-southeast-1', 'ap-southeast-1 (Singapore)'),
+    ('ap-southeast-2', 'ap-southeast-2 (Sydney)'),
+    ('ap-northeast-1', 'ap-northeast-1 (Tokyo)'),
+    ('af-south-1',     'af-south-1 (Cape Town)'),
+    ('me-south-1',     'me-south-1 (Bahrain)'),
+]
+
+AWS_INSTANCE_TYPES = [
+    ('t2.micro',  't2.micro (free tier eligible, 1 vCPU, 1 GB)'),
+    ('t3.micro',  't3.micro (1 vCPU, 1 GB)'),
+    ('t3.small',  't3.small (1 vCPU, 2 GB)'),
+    ('t3.medium', 't3.medium (2 vCPU, 4 GB)'),
 ]
 
 
@@ -108,6 +132,22 @@ class ProvisionGCPForm(forms.Form):
     address              = forms.CharField(max_length=20, label='VPN Address', initial='10.0.0.1/24')
     dns_servers          = forms.CharField(max_length=100, label='DNS Servers', initial='1.1.1.1,8.8.8.8')
     mtu                  = forms.IntegerField(label='MTU', initial=1420)
+
+
+class ProvisionAWSForm(forms.Form):
+    name           = forms.CharField(max_length=100, label='Server Name', help_text='A friendly name e.g. AWS US East')
+    aws_access_key = forms.CharField(max_length=100, label='AWS Access Key ID')
+    aws_secret_key = forms.CharField(max_length=200, label='AWS Secret Access Key', widget=forms.PasswordInput())
+    aws_region     = forms.ChoiceField(choices=AWS_REGIONS, label='Region')
+    instance_type  = forms.ChoiceField(choices=AWS_INSTANCE_TYPES, label='Instance Type')
+    ssh_user       = forms.CharField(max_length=100, label='SSH User', initial='admin', help_text='Default Debian user on EC2 is admin')
+    interface_name = forms.CharField(max_length=15, label='Interface Name', initial='wg0')
+    listen_port    = forms.IntegerField(label='Listen Port', initial=51820)
+    vpn_subnet     = forms.CharField(max_length=20, label='VPN Subnet', initial='10.0.0.0/24')
+    server_ip      = forms.CharField(max_length=20, label='Server IP', initial='10.0.0.1')
+    address        = forms.CharField(max_length=20, label='VPN Address', initial='10.0.0.1/24')
+    dns_servers    = forms.CharField(max_length=100, label='DNS Servers', initial='1.1.1.1,8.8.8.8')
+    mtu            = forms.IntegerField(label='MTU', initial=1420)
 
 
 # Standard server views
@@ -371,7 +411,7 @@ def server_delete(request, pk):
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
         server.delete()
-        messages.success(request, f'Server "{name}" removed from database. GCP VM is untouched.')
+        messages.success(request, f'Server "{name}" removed from database. VM is untouched.')
         return redirect('server:list')
     return redirect('server:overview', pk=pk)
 
@@ -402,34 +442,52 @@ def server_wipe_peers(request, pk):
 def server_destroy_vm(request, pk):
     server = get_object_or_404(ServerConfig, pk=pk)
     if request.method == 'POST':
-        if not server.gcp_instance_name or not server.gcp_zone or not server.gcp_project_id:
-            messages.error(request, 'This server has no GCP instance details. Use "Remove from Database" instead.')
-            return redirect('server:overview', pk=pk)
-
-        sa_json_file = request.FILES.get('sa_json_file')
-        if not sa_json_file:
-            messages.error(request, 'Service account JSON file is required to destroy the VM.')
-            return redirect('server:overview', pk=pk)
-
         from apps.devices.models import Device
         from wireguard.provisioner import WireGuardProvisioner
-        name        = server.name
-        sa_json_str = sa_json_file.read().decode('utf-8')
-        try:
-            WireGuardProvisioner(server).destroy_gcp_vm(
-                project_id=server.gcp_project_id,
-                zone=server.gcp_zone,
-                instance_name=server.gcp_instance_name,
-                sa_json_str=sa_json_str,
-            )
-        except Exception as e:
-            messages.error(request, f'Failed to destroy VM: {e}')
+        name = server.name
+
+        if server.aws_instance_id:
+            aws_access_key = request.POST.get('aws_access_key')
+            aws_secret_key = request.POST.get('aws_secret_key')
+            if not aws_access_key or not aws_secret_key:
+                messages.error(request, 'AWS access key and secret key are required to destroy the VM.')
+                return redirect('server:overview', pk=pk)
+            try:
+                WireGuardProvisioner(server).destroy_aws_vm(
+                    instance_id=server.aws_instance_id,
+                    region=server.aws_region,
+                    aws_access_key=aws_access_key,
+                    aws_secret_key=aws_secret_key,
+                )
+            except Exception as e:
+                messages.error(request, f'Failed to destroy AWS instance: {e}')
+                return redirect('server:overview', pk=pk)
+
+        elif server.gcp_instance_name:
+            sa_json_file = request.FILES.get('sa_json_file')
+            if not sa_json_file:
+                messages.error(request, 'Service account JSON file is required to destroy the GCP VM.')
+                return redirect('server:overview', pk=pk)
+            sa_json_str = sa_json_file.read().decode('utf-8')
+            try:
+                WireGuardProvisioner(server).destroy_gcp_vm(
+                    project_id=server.gcp_project_id,
+                    zone=server.gcp_zone,
+                    instance_name=server.gcp_instance_name,
+                    sa_json_str=sa_json_str,
+                )
+            except Exception as e:
+                messages.error(request, f'Failed to destroy GCP VM: {e}')
+                return redirect('server:overview', pk=pk)
+
+        else:
+            messages.error(request, 'No cloud instance details found. Use "Remove from Database" instead.')
             return redirect('server:overview', pk=pk)
 
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
         server.delete()
-        messages.success(request, f'Server "{name}" and its GCP VM have been permanently destroyed.')
+        messages.success(request, f'Server "{name}" and its VM have been permanently destroyed.')
         return redirect('server:list')
     return redirect('server:overview', pk=pk)
 
@@ -516,6 +574,42 @@ def provision_gcp(request):
             return redirect('server:provisioning_progress', pk=server.pk)
 
     return render(request, 'server/provision_gcp.html', {'form': form})
+
+
+@staff_required
+@write_required
+def provision_aws(request):
+    form = ProvisionAWSForm()
+    if request.method == 'POST':
+        form = ProvisionAWSForm(request.POST)
+        if form.is_valid():
+            from wireguard.provisioner import WireGuardProvisioner
+            data = form.cleaned_data
+
+            server = ServerConfig.objects.create(
+                name=data['name'],
+                ssh_user=data['ssh_user'],
+                interface_name=data['interface_name'],
+                listen_port=data['listen_port'],
+                vpn_subnet=data['vpn_subnet'],
+                server_ip=data['server_ip'],
+                address=data['address'],
+                dns_servers=data['dns_servers'],
+                mtu=data['mtu'],
+                aws_region=data['aws_region'],
+                provisioning_status='provisioning',
+                provisioning_log='',
+            )
+
+            WireGuardProvisioner(server).start_provision_aws_vm(
+                region=data['aws_region'],
+                instance_type=data['instance_type'],
+                aws_access_key=data['aws_access_key'],
+                aws_secret_key=data['aws_secret_key'],
+            )
+            return redirect('server:provisioning_progress', pk=server.pk)
+
+    return render(request, 'server/provision_aws.html', {'form': form})
 
 
 @staff_required

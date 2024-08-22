@@ -1,0 +1,119 @@
+{% extends 'base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create AWS VM - WireGuard Manager{% endblock %}
+
+{% block dashboard_content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <a href="{% url 'server:create_choice' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0">Create AWS VM</h4>
+        <small class="text-muted">Launch an EC2 instance and provision WireGuard automatically</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-tag me-2"></i>Server Details</h6>
+                </div>
+                <div class="card-body">
+                    {{ form.name|as_crispy_field }}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-key me-2"></i>AWS Credentials</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Credentials are used only during provisioning and are never stored.
+                        Use an IAM user with EC2 permissions only.
+                    </div>
+                    {{ form.aws_access_key|as_crispy_field }}
+                    {{ form.aws_secret_key|as_crispy_field }}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-cloud me-2"></i>Instance Configuration</h6>
+                </div>
+                <div class="card-body">
+                    {{ form.aws_region|as_crispy_field }}
+                    {{ form.instance_type|as_crispy_field }}
+                    {{ form.ssh_user|as_crispy_field }}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-shield me-2"></i>WireGuard Configuration</h6>
+                </div>
+                <div class="card-body">
+                    {{ form.interface_name|as_crispy_field }}
+                    {{ form.listen_port|as_crispy_field }}
+                    {{ form.vpn_subnet|as_crispy_field }}
+                    {{ form.server_ip|as_crispy_field }}
+                    {{ form.address|as_crispy_field }}
+                    {{ form.dns_servers|as_crispy_field }}
+                    {{ form.mtu|as_crispy_field }}
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-cloud-plus me-1"></i> Launch & Provision
+                </button>
+                <a href="{% url 'server:create_choice' %}" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4 offset-lg-1">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Before you start</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">Make sure you have the following ready:</p>
+                <ul class="small text-muted list-unstyled">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>AWS account with billing enabled</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>IAM user with EC2 full access policy</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Access key ID and secret key for that IAM user</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>EC2 service available in your chosen region</li>
+                </ul>
+                <hr>
+                <p class="small text-muted mb-1 fw-semibold">Required IAM permissions:</p>
+                <ul class="small text-muted list-unstyled">
+                    <li><code>ec2:RunInstances</code></li>
+                    <li><code>ec2:DescribeInstances</code></li>
+                    <li><code>ec2:TerminateInstances</code></li>
+                    <li><code>ec2:CreateSecurityGroup</code></li>
+                    <li><code>ec2:AuthorizeSecurityGroupIngress</code></li>
+                    <li><code>ec2:DescribeSecurityGroups</code></li>
+                    <li><code>ec2:ImportKeyPair</code></li>
+                    <li><code>ec2:DescribeImages</code></li>
+                </ul>
+                <hr>
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-clock me-1"></i>
+                    Provisioning typically takes 3-5 minutes.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -9,6 +9,7 @@ urlpatterns = [
     path('create/',                           views.create_choice,            name='create_choice'),
     path('create/existing-vm/',               views.provision_existing,       name='provision_existing'),
     path('create/gcp-vm/',                    views.provision_gcp,            name='provision_gcp'),
+    path('create/aws-vm/',                    views.provision_aws,            name='provision_aws'),
     path('<int:pk>/',                         views.server_overview,          name='overview'),
     path('<int:pk>/setup/',                   views.server_setup,             name='setup'),
     path('<int:pk>/repopulate/',              views.repopulate_ip_pool,       name='repopulate_pool'),

@@ -33,12 +33,10 @@ class WireGuardProvisioner:
         from wireguard.key_manager import encrypt
         from wireguard.ip_allocator import IPAllocator
 
-        # Step 1: Test SSH
         self._append_log('Step 1/6: Testing SSH connection...')
         run_command('echo "SSH OK"', self.server)
         self._append_log('SSH connection successful.')
 
-        # Step 2: Install WireGuard and iptables, enable IP forwarding
         self._append_log('Step 2/6: Installing WireGuard...')
         run_command(
             'export DEBIAN_FRONTEND=noninteractive && sudo apt-get update -y',
@@ -54,7 +52,6 @@ class WireGuardProvisioner:
         )
         self._append_log('WireGuard installed.')
 
-        # Step 3: Generate keys on the VM
         self._append_log('Step 3/6: Generating WireGuard keys...')
         private_key, _ = run_command('wg genkey', self.server)
         private_key    = private_key.strip()
@@ -62,7 +59,6 @@ class WireGuardProvisioner:
         public_key     = public_key.strip()
         self._append_log('Keys generated.')
 
-        # Step 4: Detect network interface
         self._append_log('Step 4/6: Detecting network interface...')
         iface, _ = run_command(
             "ip route | grep default | awk '{print $5}' | head -1",
@@ -71,7 +67,6 @@ class WireGuardProvisioner:
         iface = iface.strip() or 'eth0'
         self._append_log(f'Network interface: {iface}')
 
-        # Step 5: Write config
         self._append_log('Step 5/6: Writing WireGuard config...')
         post_up = (
             f'iptables -A FORWARD -i {self.server.interface_name} -j ACCEPT; '
@@ -99,7 +94,6 @@ class WireGuardProvisioner:
         )
         self._append_log('Config written to /etc/wireguard/.')
 
-        # Step 6: Enable and start service
         self._append_log('Step 6/6: Starting WireGuard service...')
         run_command(
             f'sudo systemctl enable wg-quick@{self.server.interface_name}',
@@ -111,7 +105,6 @@ class WireGuardProvisioner:
         )
         self._append_log('WireGuard service started.')
 
-        # Save keys to DB
         ServerConfig.objects.filter(pk=self.server.pk).update(
             public_key=public_key,
             private_key=encrypt(private_key),
@@ -120,7 +113,6 @@ class WireGuardProvisioner:
         )
         self._append_log('Keys saved to database.')
 
-        # Populate IP pool
         server = ServerConfig.objects.get(pk=self.server.pk)
         IPAllocator(server).populate_pool()
         self._append_log('IP pool populated.')
@@ -183,10 +175,10 @@ class WireGuardProvisioner:
         init.disk_size_gb      = 20
         disk.initialize_params = init
 
-        nic               = compute_v1.NetworkInterface()
-        access            = compute_v1.AccessConfig()
-        access.name       = 'External NAT'
-        access.type_      = 'ONE_TO_ONE_NAT'
+        nic                = compute_v1.NetworkInterface()
+        access             = compute_v1.AccessConfig()
+        access.name        = 'External NAT'
+        access.type_       = 'ONE_TO_ONE_NAT'
         nic.access_configs = [access]
 
         instance                    = compute_v1.Instance()
@@ -256,7 +248,6 @@ class WireGuardProvisioner:
             self._set_status('failed')
             logger.exception('GCP provisioning failed for server %s', self.server.pk)
 
-
     def destroy_gcp_vm(self, project_id, zone, instance_name, sa_json_str):
         import json
         from google.cloud import compute_v1
@@ -272,11 +263,169 @@ class WireGuardProvisioner:
         op.result(timeout=300)
         logger.info('GCP VM %s deleted.', instance_name)
 
-
     def start_provision_gcp_vm(self, project_id, zone, machine_type, sa_json_str):
         def run():
             try:
                 self.provision_gcp_vm(project_id, zone, machine_type, sa_json_str)
+            finally:
+                db_connection.close()
+        threading.Thread(target=run, daemon=True).start()
+
+    # AWS VM path
+
+    def create_aws_vm(self, region, instance_type, aws_access_key, aws_secret_key, ssh_user):
+        import boto3
+
+        self._append_log('Generating SSH key pair...')
+        private_key_str, public_key_str = self.generate_ssh_keypair()
+
+        self._append_log(f'Connecting to AWS region {region}...')
+        ec2 = boto3.client(
+            'ec2',
+            region_name=region,
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+        )
+
+        # Create security group
+        sg_name = f'wireguard-{self.server.pk}-{int(time.time())}'
+        self._append_log(f'Creating security group {sg_name}...')
+        sg = ec2.create_security_group(
+            GroupName=sg_name,
+            Description='WireGuard Manager auto-created security group',
+        )
+        sg_id = sg['GroupId']
+        ec2.authorize_security_group_ingress(
+            GroupId=sg_id,
+            IpPermissions=[
+                {
+                    'IpProtocol': 'tcp',
+                    'FromPort': 22,
+                    'ToPort': 22,
+                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                },
+                {
+                    'IpProtocol': 'udp',
+                    'FromPort': self.server.listen_port,
+                    'ToPort': self.server.listen_port,
+                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}],
+                },
+            ]
+        )
+        self._append_log('Security group created.')
+
+        # Import SSH public key
+        key_name = f'wireguard-key-{self.server.pk}-{int(time.time())}'
+        ec2.import_key_pair(
+            KeyName=key_name,
+            PublicKeyMaterial=public_key_str.encode('utf-8'),
+        )
+        self._append_log('SSH key imported.')
+
+        # Get latest Debian 12 AMI
+        self._append_log('Finding latest Debian 12 AMI...')
+        images = ec2.describe_images(
+            Filters=[
+                {'Name': 'name', 'Values': ['debian-12-amd64-*']},
+                {'Name': 'owner-alias', 'Values': ['aws-marketplace']},
+                {'Name': 'state', 'Values': ['available']},
+            ],
+            Owners=['679593333241'],
+        )
+        ami_id = sorted(
+            images['Images'],
+            key=lambda x: x['CreationDate'],
+            reverse=True
+        )[0]['ImageId']
+        self._append_log(f'Using AMI: {ami_id}')
+
+        # Launch instance
+        self._append_log(f'Launching EC2 instance ({instance_type})...')
+        response    = ec2.run_instances(
+            ImageId=ami_id,
+            InstanceType=instance_type,
+            MinCount=1,
+            MaxCount=1,
+            KeyName=key_name,
+            SecurityGroupIds=[sg_id],
+            BlockDeviceMappings=[{
+                'DeviceName': '/dev/xvda',
+                'Ebs': {'VolumeSize': 20, 'DeleteOnTermination': True},
+            }],
+        )
+        instance_id = response['Instances'][0]['InstanceId']
+        self._append_log(f'Instance launched: {instance_id}. Waiting for it to start...')
+
+        waiter = ec2.get_waiter('instance_running')
+        waiter.wait(InstanceIds=[instance_id])
+        self._append_log('Instance is running.')
+
+        info        = ec2.describe_instances(InstanceIds=[instance_id])
+        external_ip = info['Reservations'][0]['Instances'][0]['PublicIpAddress']
+        self._append_log(f'Instance public IP: {external_ip}')
+
+        return external_ip, private_key_str, instance_id
+
+    def provision_aws_vm(self, region, instance_type, aws_access_key, aws_secret_key):
+        from apps.server.models import ServerConfig
+        from wireguard.key_manager import encrypt
+
+        self._set_status('provisioning')
+        try:
+            ssh_user = self.server.ssh_user
+            external_ip, ssh_private_key, instance_id = self.create_aws_vm(
+                region, instance_type, aws_access_key, aws_secret_key, ssh_user
+            )
+
+            ServerConfig.objects.filter(pk=self.server.pk).update(
+                public_ip=external_ip,
+                ssh_host=external_ip,
+                ssh_key_encrypted=encrypt(ssh_private_key),
+                aws_instance_id=instance_id,
+                aws_region=region,
+            )
+            self.server = ServerConfig.objects.get(pk=self.server.pk)
+
+            self._append_log('Waiting for SSH to become available...')
+            time.sleep(30)
+            for attempt in range(12):
+                try:
+                    run_command('echo "SSH OK"', self.server)
+                    self._append_log('SSH is available.')
+                    break
+                except Exception:
+                    self._append_log(f'SSH not ready, retrying ({attempt + 1}/12)...')
+                    time.sleep(10)
+            else:
+                raise Exception('SSH did not become available after instance launch.')
+
+            self._install_and_configure()
+            self._set_status('provisioned')
+            self._append_log('Provisioning complete. Server is ready.')
+
+        except Exception as e:
+            self._append_log(f'ERROR: {e}')
+            self._set_status('failed')
+            logger.exception('AWS provisioning failed for server %s', self.server.pk)
+
+    def destroy_aws_vm(self, instance_id, region, aws_access_key, aws_secret_key):
+        import boto3
+
+        ec2 = boto3.client(
+            'ec2',
+            region_name=region,
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+        )
+        ec2.terminate_instances(InstanceIds=[instance_id])
+        waiter = ec2.get_waiter('instance_terminated')
+        waiter.wait(InstanceIds=[instance_id])
+        logger.info('AWS instance %s terminated.', instance_id)
+
+    def start_provision_aws_vm(self, region, instance_type, aws_access_key, aws_secret_key):
+        def run():
+            try:
+                self.provision_aws_vm(region, instance_type, aws_access_key, aws_secret_key)
             finally:
                 db_connection.close()
         threading.Thread(target=run, daemon=True).start()
