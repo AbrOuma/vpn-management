@@ -287,10 +287,9 @@ class WireGuardProvisioner:
             aws_secret_access_key=aws_secret_key,
         )
 
-        # Create security group
         sg_name = f'wireguard-{self.server.pk}-{int(time.time())}'
         self._append_log(f'Creating security group {sg_name}...')
-        sg = ec2.create_security_group(
+        sg    = ec2.create_security_group(
             GroupName=sg_name,
             Description='WireGuard Manager auto-created security group',
         )
@@ -314,7 +313,6 @@ class WireGuardProvisioner:
         )
         self._append_log('Security group created.')
 
-        # Import SSH public key
         key_name = f'wireguard-key-{self.server.pk}-{int(time.time())}'
         ec2.import_key_pair(
             KeyName=key_name,
@@ -322,15 +320,13 @@ class WireGuardProvisioner:
         )
         self._append_log('SSH key imported.')
 
-        # Get latest Debian 12 AMI
-        self._append_log('Finding latest Debian 12 AMI...')
+        self._append_log('Finding latest Ubuntu 22.04 AMI...')
         images = ec2.describe_images(
             Filters=[
-                {'Name': 'name', 'Values': ['debian-12-amd64-*']},
-                {'Name': 'owner-alias', 'Values': ['aws-marketplace']},
+                {'Name': 'name', 'Values': ['ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*']},
                 {'Name': 'state', 'Values': ['available']},
             ],
-            Owners=['679593333241'],
+            Owners=['099720109477'],
         )
         ami_id = sorted(
             images['Images'],
@@ -339,7 +335,6 @@ class WireGuardProvisioner:
         )[0]['ImageId']
         self._append_log(f'Using AMI: {ami_id}')
 
-        # Launch instance
         self._append_log(f'Launching EC2 instance ({instance_type})...')
         response    = ec2.run_instances(
             ImageId=ami_id,
@@ -349,7 +344,7 @@ class WireGuardProvisioner:
             KeyName=key_name,
             SecurityGroupIds=[sg_id],
             BlockDeviceMappings=[{
-                'DeviceName': '/dev/xvda',
+                'DeviceName': '/dev/sda1',
                 'Ebs': {'VolumeSize': 20, 'DeleteOnTermination': True},
             }],
         )

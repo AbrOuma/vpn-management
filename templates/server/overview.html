@@ -43,12 +43,10 @@
     </div>
 </div>
 
-<!-- Inline result banner -->
 <div id="actionResult" class="d-none alert mb-3"></div>
 
 <div class="row g-4">
 
-    <!-- Server details -->
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
@@ -96,15 +94,23 @@
                         <td><code>{{ server.gcp_zone }}</code></td>
                     </tr>
                     {% endif %}
+                    {% if server.aws_instance_id %}
+                    <tr>
+                        <td class="text-muted">AWS Instance</td>
+                        <td><code>{{ server.aws_instance_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">AWS Region</td>
+                        <td><code>{{ server.aws_region }}</code></td>
+                    </tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Right column -->
     <div class="col-md-6">
 
-        <!-- IP Pool -->
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">IP Pool</h6>
@@ -132,7 +138,6 @@
             </div>
         </div>
 
-        <!-- Public key -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3">Server Public Key</h6>
@@ -151,7 +156,6 @@
             </div>
         </div>
 
-        <!-- SSH Key -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4 d-flex justify-content-between align-items-center">
                 <div>
@@ -176,7 +180,6 @@
             </div>
         </div>
 
-        <!-- Devices -->
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-4 d-flex justify-content-between align-items-center">
                 <div>
@@ -190,7 +193,7 @@
     </div>
 </div>
 
-<!-- Delete Modal - 3 options -->
+<!-- Delete Modal -->
 <div class="modal fade" id="deleteServerModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
@@ -201,10 +204,21 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-4">
+                <p class="text-muted mb-3">
                     Choose how you want to delete <strong>{{ server.name }}</strong>.
                     This cannot be undone.
                 </p>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small">
+                        Type <code>DELETE</code> to enable the first two options
+                    </label>
+                    <input type="text"
+                           id="deleteConfirmInput"
+                           class="form-control"
+                           placeholder="Type DELETE to confirm"
+                           autocomplete="off">
+                </div>
 
                 <div class="row g-3">
 
@@ -217,14 +231,16 @@
                                     <h6 class="fw-bold">Remove from Database</h6>
                                     <p class="text-muted small mb-0">
                                         Deletes the server record, all devices and IP
-                                        allocations from Django. The GCP VM keeps running
+                                        allocations from the database. The VM keeps running
                                         and WireGuard is untouched.
                                     </p>
                                 </div>
                                 <div class="mt-auto">
                                     <form method="post" action="{% url 'server:delete' server.pk %}">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-warning w-100">
+                                        <button type="submit"
+                                                class="btn btn-warning w-100 confirmed-btn"
+                                                disabled>
                                             <i class="bi bi-database-x me-1"></i>DB Only
                                         </button>
                                     </form>
@@ -249,7 +265,9 @@
                                 <div class="mt-auto">
                                     <form method="post" action="{% url 'server:wipe_peers' server.pk %}">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger w-100">
+                                        <button type="submit"
+                                                class="btn btn-danger w-100 confirmed-btn"
+                                                disabled>
                                             <i class="bi bi-wifi-off me-1"></i>Wipe Peers
                                         </button>
                                     </form>
@@ -260,48 +278,58 @@
 
                     <!-- Option 3: Destroy VM -->
                     <div class="col-md-4">
-                        <div class="card h-100 {% if server.gcp_instance_name %}border-danger{% else %}border-secondary opacity-75{% endif %}">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3">
-                                    {% if server.gcp_instance_name %}
+                        {% if server.aws_instance_id or server.gcp_instance_name %}
+                            <div class="card border-danger h-100">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="mb-3">
                                         <span class="badge bg-danger mb-2">Irreversible</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary mb-2">Not Available</span>
-                                    {% endif %}
-                                    <h6 class="fw-bold {% if not server.gcp_instance_name %}text-muted{% endif %}">
-                                        Destroy GCP VM
-                                    </h6>
-                                    <p class="text-muted small mb-0">
-                                        {% if server.gcp_instance_name %}
-                                            Terminates <code>{{ server.gcp_instance_name }}</code>
-                                            in <code>{{ server.gcp_zone }}</code> entirely.
-                                            Removes everything - VM, WireGuard, peers, and database records.
-                                        {% else %}
-                                            Only available for servers provisioned through Django
-                                            using the Create GCP VM flow.
-                                        {% endif %}
-                                    </p>
-                                </div>
-                                <div class="mt-auto">
-                                    {% if server.gcp_instance_name %}
+                                        <h6 class="fw-bold">
+                                            Destroy {% if server.aws_instance_id %}AWS{% else %}GCP{% endif %} VM
+                                        </h6>
+                                        <p class="text-muted small mb-0">
+                                            {% if server.aws_instance_id %}
+                                                Terminates EC2 instance
+                                                <code>{{ server.aws_instance_id }}</code>
+                                                in <code>{{ server.aws_region }}</code> entirely.
+                                            {% else %}
+                                                Terminates <code>{{ server.gcp_instance_name }}</code>
+                                                in <code>{{ server.gcp_zone }}</code> entirely.
+                                            {% endif %}
+                                            Removes everything — VM, WireGuard, peers, and database records.
+                                        </p>
+                                    </div>
+                                    <div class="mt-auto">
                                         <form method="post"
                                               action="{% url 'server:destroy_vm' server.pk %}"
                                               id="destroyVmForm"
                                               enctype="multipart/form-data">
                                             {% csrf_token %}
-                                            <div class="mb-2">
-                                                <label class="form-label small fw-bold">
-                                                    Service Account JSON Key
-                                                </label>
-                                                <input type="file"
-                                                       name="sa_json_file"
-                                                       class="form-control form-control-sm"
-                                                       accept=".json"
-                                                       required>
-                                                <small class="text-muted">
-                                                    Upload your GCP service account JSON key file.
-                                                </small>
-                                            </div>
+                                            {% if server.aws_instance_id %}
+                                                <div class="mb-2">
+                                                    <label class="form-label small fw-bold">AWS Access Key ID</label>
+                                                    <input type="text"
+                                                           name="aws_access_key"
+                                                           class="form-control form-control-sm"
+                                                           required>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label small fw-bold">AWS Secret Access Key</label>
+                                                    <input type="password"
+                                                           name="aws_secret_key"
+                                                           class="form-control form-control-sm"
+                                                           required>
+                                                </div>
+                                            {% else %}
+                                                <div class="mb-2">
+                                                    <label class="form-label small fw-bold">Service Account JSON Key</label>
+                                                    <input type="file"
+                                                           name="sa_json_file"
+                                                           class="form-control form-control-sm"
+                                                           accept=".json"
+                                                           required>
+                                                    <small class="text-muted">Upload your GCP service account JSON key file.</small>
+                                                </div>
+                                            {% endif %}
                                             <button type="submit" class="btn btn-danger w-100 submit-btn">
                                                 <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
                                                 <span class="btn-label">
@@ -309,14 +337,28 @@
                                                 </span>
                                             </button>
                                         </form>
-                                    {% else %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="card border-secondary opacity-75 h-100">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="mb-3">
+                                        <span class="badge bg-secondary mb-2">Not Available</span>
+                                        <h6 class="fw-bold text-muted">Destroy VM</h6>
+                                        <p class="text-muted small mb-0">
+                                            Only available for servers provisioned through
+                                            WG Manager using the Create GCP VM or Create AWS VM flow.
+                                        </p>
+                                    </div>
+                                    <div class="mt-auto">
                                         <button class="btn btn-secondary w-100" disabled>
                                             <i class="bi bi-cloud-slash me-1"></i>Not Available
                                         </button>
-                                    {% endif %}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        {% endif %}
                     </div>
 
                 </div>
@@ -388,10 +430,10 @@
         if (data.ip_free === undefined) return;
         const total   = data.ip_free + data.ip_assigned;
         const percent = total > 0 ? Math.round((data.ip_assigned / total) * 100) : 0;
-        document.querySelector('.ip-free').textContent    = data.ip_free;
+        document.querySelector('.ip-free').textContent     = data.ip_free;
         document.querySelector('.ip-assigned').textContent = data.ip_assigned;
-        document.querySelector('.ip-total').textContent   = total;
-        document.querySelector('.ip-percent').textContent = percent + '% of pool in use';
+        document.querySelector('.ip-total').textContent    = total;
+        document.querySelector('.ip-percent').textContent  = percent + '% of pool in use';
         const bar = document.querySelector('.progress-bar');
         if (bar) bar.style.width = percent + '%';
     }
@@ -423,14 +465,12 @@
         }
     }
 
-    // Sync and Health buttons
     document.querySelectorAll('.ajax-action').forEach(btn => {
         btn.addEventListener('click', function () {
             runAjax(this.dataset.url, this);
         });
     });
 
-    // Repopulate confirm button inside modal
     repopulateConfirmBtn.addEventListener('click', function () {
         const modal = bootstrap.Modal.getInstance(
             document.getElementById('repopulateConfirmModal')
@@ -439,7 +479,6 @@
         runAjax('{% url "server:ajax_repopulate" server.pk %}', this);
     });
 
-    // Loading state for all delete/action forms in modals
     document.querySelectorAll('.modal form').forEach(function (form) {
         form.addEventListener('submit', function () {
             const btn = form.querySelector('button[type="submit"]');
@@ -449,7 +488,6 @@
         });
     });
 
-    // Loading state for destroy VM form
     const destroyForm = document.getElementById('destroyVmForm');
     if (destroyForm) {
         destroyForm.addEventListener('submit', function () {
@@ -459,6 +497,22 @@
             spinner.classList.remove('d-none');
             label.classList.add('d-none');
             btn.disabled = true;
+        });
+    }
+
+    // DELETE confirmation input
+    const deleteInput   = document.getElementById('deleteConfirmInput');
+    const confirmedBtns = document.querySelectorAll('.confirmed-btn');
+
+    if (deleteInput) {
+        deleteInput.addEventListener('input', function () {
+            const confirmed = this.value === 'DELETE';
+            confirmedBtns.forEach(btn => btn.disabled = !confirmed);
+        });
+
+        document.getElementById('deleteServerModal').addEventListener('hidden.bs.modal', function () {
+            deleteInput.value = '';
+            confirmedBtns.forEach(btn => btn.disabled = true);
         });
     }
 })();

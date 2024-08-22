@@ -140,7 +140,7 @@ class ProvisionAWSForm(forms.Form):
     aws_secret_key = forms.CharField(max_length=200, label='AWS Secret Access Key', widget=forms.PasswordInput())
     aws_region     = forms.ChoiceField(choices=AWS_REGIONS, label='Region')
     instance_type  = forms.ChoiceField(choices=AWS_INSTANCE_TYPES, label='Instance Type')
-    ssh_user       = forms.CharField(max_length=100, label='SSH User', initial='admin', help_text='Default Debian user on EC2 is admin')
+    ssh_user = forms.CharField(max_length=100, label='SSH User', initial='ubuntu', help_text='Default user on Ubuntu EC2 is ubuntu')
     interface_name = forms.CharField(max_length=15, label='Interface Name', initial='wg0')
     listen_port    = forms.IntegerField(label='Listen Port', initial=51820)
     vpn_subnet     = forms.CharField(max_length=20, label='VPN Subnet', initial='10.0.0.0/24')
