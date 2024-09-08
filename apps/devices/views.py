@@ -4,6 +4,7 @@ from .models import Device
 from .forms import DeviceForm, DeviceEditForm
 from .services import create_device
 from apps.accounts.decorators import staff_required, write_required
+from apps.accounts.utils import log_action
 
 
 @staff_required
@@ -60,6 +61,7 @@ def device_add(request):
                     user        = form.cleaned_data['user'],
                     base_url    = request.build_absolute_uri('/').rstrip('/'),
                 )
+                log_action(request, 'Device Created', device.name, f'Server: {device.server.name}')
                 messages.success(request, f'Device "{device.name}" created successfully.')
                 if not form.cleaned_data.get('user'):
                     messages.warning(request, 'No user assigned - invite email was not sent. Assign a user to send the invite.')
@@ -76,7 +78,42 @@ def device_detail(request, pk):
         Device.objects.select_related('user', 'allocated_ip'),
         pk=pk
     )
-    return render(request, 'devices/detail.html', {'device': device})
+
+    traffic = None
+    try:
+        from wireguard.commands import wg_show_dump, parse_wg_dump
+        dump   = wg_show_dump(device.server, device.server.interface_name)
+        peers  = parse_wg_dump(dump)
+        traffic = peers.get(device.public_key)
+    except Exception:
+        pass
+
+    return render(request, 'devices/detail.html', {
+        'device':  device,
+        'traffic': traffic,
+    })
+
+@staff_required
+def device_traffic(request, pk):
+    from django.http import JsonResponse
+    device = get_object_or_404(Device, pk=pk)
+    try:
+        from wireguard.commands import wg_show_dump, parse_wg_dump
+        dump    = wg_show_dump(device.server, device.server.interface_name)
+        peers   = parse_wg_dump(dump)
+        data    = peers.get(device.public_key)
+        if data:
+            from datetime import datetime, timezone as tz
+            lh = data['last_handshake']
+            return JsonResponse({
+                'bytes_received': data['bytes_received'],
+                'bytes_sent':     data['bytes_sent'],
+                'last_handshake': lh.strftime('%d %b %Y %H:%M') if lh else 'Never',
+                'endpoint':       data['endpoint'] or 'Not connected',
+            })
+    except Exception:
+        pass
+    return JsonResponse({'error': 'unavailable'})
 
 
 @staff_required
@@ -86,6 +123,7 @@ def device_enable(request, pk):
     if request.method == 'POST':
         device.status = Device.Status.ACTIVE
         device.save(update_fields=['status', 'updated_at'])
+        log_action(request, 'Device Enabled', device.name)
         messages.success(request, f'{device.name} has been enabled.')
     return redirect('devices:detail', pk=pk)
 
@@ -97,6 +135,7 @@ def device_disable(request, pk):
     if request.method == 'POST':
         device.status = Device.Status.DISABLED
         device.save(update_fields=['status', 'updated_at'])
+        log_action(request, 'Device Disabled', device.name)
         messages.warning(request, f'{device.name} has been disabled.')
     return redirect('devices:detail', pk=pk)
 
@@ -108,6 +147,7 @@ def device_revoke(request, pk):
     if request.method == 'POST':
         device.status = Device.Status.REVOKED
         device.save(update_fields=['status', 'updated_at'])
+        log_action(request, 'Device Revoked', device.name)
         messages.error(request, f'{device.name} has been revoked.')
     return redirect('devices:detail', pk=pk)
 
@@ -122,6 +162,7 @@ def device_edit(request, pk):
         form = DeviceEditForm(request.POST, instance=device)
         if form.is_valid():
             form.save()
+            log_action(request, 'Device Updated', device.name)
             messages.success(request, f'{device.name} updated successfully.')
             return redirect('devices:detail', pk=pk)
 
@@ -144,6 +185,7 @@ def device_delete(request, pk):
         from wireguard.ip_allocator import IPAllocator
         IPAllocator(server).release(allocation)
 
+        log_action(request, 'Device Deleted', device_name, f'Server: {server.name}')
         device.delete()
 
         try:

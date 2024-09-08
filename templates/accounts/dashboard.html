@@ -1,0 +1,513 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block dashboard_content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  .dash-wrap {
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 2rem 2.5rem;
+    background: #f4f6f9;
+  }
+
+  .dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+  }
+  .dash-header h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #0f1623;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .dash-header p {
+    font-size: 0.82rem;
+    color: #8a94a6;
+    margin: 0.2rem 0 0;
+    font-weight: 400;
+  }
+  .dash-timestamp {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: #b0b8c8;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid #e8ecf2;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+  }
+  .stat-card.c-blue::before  { background: #3b82f6; }
+  .stat-card.c-green::before { background: #10b981; }
+  .stat-card.c-violet::before{ background: #8b5cf6; }
+  .stat-card.c-amber::before { background: #f59e0b; }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #8a94a6;
+    margin-bottom: 0.5rem;
+  }
+  .stat-value {
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: #0f1623;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .stat-sub {
+    font-size: 0.75rem;
+    color: #b0b8c8;
+  }
+  .stat-icon {
+    position: absolute;
+    bottom: 1rem;
+    right: 1.2rem;
+    font-size: 2.4rem;
+    opacity: 0.07;
+    color: #0f1623;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .content-grid-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding-bottom: 2rem;
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e8ecf2;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #f0f3f8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f1623;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0;
+  }
+  .panel-body {
+    padding: 1.2rem 1.5rem;
+  }
+  .panel-link {
+    font-size: 0.75rem;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .panel-link:hover { color: #2563eb; }
+
+  .device-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .device-table th {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #b0b8c8;
+    padding: 0 0.75rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #f0f3f8;
+  }
+  .device-table td {
+    padding: 0.8rem 0.75rem;
+    border-bottom: 1px solid #f8fafc;
+    font-size: 0.82rem;
+    color: #374151;
+    vertical-align: middle;
+  }
+  .device-table tr:last-child td { border-bottom: none; }
+  .device-table tr:hover td { background: #fafbfc; }
+
+  .device-name {
+    font-weight: 500;
+    color: #0f1623;
+    text-decoration: none;
+  }
+  .device-name:hover { color: #3b82f6; }
+
+  .ip-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    background: #f4f6f9;
+    color: #4b5563;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e8ecf2;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pill-active  { background: #d1fae5; color: #065f46; }
+  .pill-disabled{ background: #fef3c7; color: #92400e; }
+  .pill-revoked { background: #fee2e2; color: #991b1b; }
+  .pill::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+  }
+  .pill-active::before  { background: #10b981; }
+  .pill-disabled::before{ background: #f59e0b; }
+  .pill-revoked::before { background: #ef4444; }
+
+  .breakdown-row { margin-bottom: 1.2rem; }
+  .breakdown-row:last-child { margin-bottom: 0; }
+  .breakdown-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+  }
+  .breakdown-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #374151;
+  }
+  .breakdown-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #0f1623;
+  }
+  .bar-track {
+    height: 5px;
+    background: #f0f3f8;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.6s ease;
+  }
+
+  .server-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f0f3f8;
+  }
+  .server-row:last-child { border-bottom: none; }
+  .server-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+    box-shadow: 0 0 0 3px #d1fae5;
+  }
+  .server-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #0f1623;
+    margin: 0;
+  }
+  .server-host {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #b0b8c8;
+    margin: 0;
+  }
+  .server-arrow {
+    color: #d1d5db;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .server-arrow:hover { color: #3b82f6; }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #e8ecf2;
+    background: #fff;
+    text-decoration: none;
+    color: #374151;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    margin-bottom: 0.6rem;
+  }
+  .action-btn:last-child { margin-bottom: 0; }
+  .action-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: #eff6ff;
+  }
+  .action-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #b0b8c8;
+    font-size: 0.82rem;
+  }
+  .empty-state i {
+    font-size: 1.8rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+  }
+</style>
+
+<div class="dash-wrap">
+
+  <div class="dash-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Overview of your VPN infrastructure</p>
+    </div>
+    <span class="dash-timestamp">{{ request.user.full_name }}</span>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card c-blue">
+      <div class="stat-label">Servers</div>
+      <div class="stat-value">{{ servers }}</div>
+      <div class="stat-sub">Registered servers</div>
+      <i class="bi bi-server stat-icon"></i>
+    </div>
+    <div class="stat-card c-green">
+      <div class="stat-label">Total Devices</div>
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-sub">{{ active }} active</div>
+      <i class="bi bi-laptop stat-icon"></i>
+    </div>
+    <div class="stat-card c-violet">
+      <div class="stat-label">VPN Users</div>
+      <div class="stat-value">{{ total_users }}</div>
+      <div class="stat-sub">Registered users</div>
+      <i class="bi bi-people stat-icon"></i>
+    </div>
+    <div class="stat-card c-amber">
+      <div class="stat-label">Revoked</div>
+      <div class="stat-value">{{ revoked }}</div>
+      <div class="stat-sub">{{ disabled }} disabled</div>
+      <i class="bi bi-slash-circle stat-icon"></i>
+    </div>
+  </div>
+
+  <div class="content-grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Recent Devices</span>
+        <a href="{% url 'devices:list' %}" class="panel-link">View all &rarr;</a>
+      </div>
+      <div style="padding: 0 0.75rem;">
+        {% if recent_devices %}
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>IP Address</th>
+              <th>User</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for device in recent_devices %}
+            <tr>
+              <td>
+                <a href="{% url 'devices:detail' device.pk %}" class="device-name">
+                  {{ device.name }}
+                </a>
+              </td>
+              <td><span class="ip-badge">{{ device.ip_address }}</span></td>
+              <td style="color: #6b7280;">{{ device.user.full_name|default:"Unassigned" }}</td>
+              <td>
+                {% if device.status == 'ACTIVE' %}
+                  <span class="pill pill-active">Active</span>
+                {% elif device.status == 'DISABLED' %}
+                  <span class="pill pill-disabled">Disabled</span>
+                {% else %}
+                  <span class="pill pill-revoked">Revoked</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <i class="bi bi-laptop"></i>
+          No devices yet. <a href="{% url 'devices:add' %}">Add your first device.</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Servers</span>
+        <a href="{% url 'server:list' %}" class="panel-link">View all &rarr;</a>
+      </div>
+      <div class="panel-body">
+        {% if server_list %}
+          {% for server in server_list %}
+          <div class="server-row">
+            <div class="d-flex align-items-center">
+              <div class="server-dot"></div>
+              <div>
+                <p class="server-name">{{ server.name }}</p>
+                <p class="server-host">{{ server.ssh_host }}</p>
+              </div>
+            </div>
+            <a href="{% url 'server:overview' server.pk %}" class="server-arrow">
+              <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty-state">
+          <i class="bi bi-server"></i>
+          No servers yet. <a href="{% url 'server:create_choice' %}">Add one.</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <div class="content-grid-bottom">
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Device Breakdown</span>
+      </div>
+      <div class="panel-body">
+        <div class="breakdown-row">
+          <div class="breakdown-meta">
+            <span class="breakdown-label">Active</span>
+            <span class="breakdown-count">{{ active }} / {{ total }}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width: {% if total %}{% widthratio active total 100 %}{% else %}0{% endif %}%; background: #10b981;"></div>
+          </div>
+        </div>
+        <div class="breakdown-row">
+          <div class="breakdown-meta">
+            <span class="breakdown-label">Disabled</span>
+            <span class="breakdown-count">{{ disabled }} / {{ total }}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width: {% if total %}{% widthratio disabled total 100 %}{% else %}0{% endif %}%; background: #f59e0b;"></div>
+          </div>
+        </div>
+        <div class="breakdown-row">
+          <div class="breakdown-meta">
+            <span class="breakdown-label">Revoked</span>
+            <span class="breakdown-count">{{ revoked }} / {{ total }}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width: {% if total %}{% widthratio revoked total 100 %}{% else %}0{% endif %}%; background: #ef4444;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Quick Actions</span>
+      </div>
+      <div class="panel-body">
+        <a href="{% url 'devices:add' %}" class="action-btn">
+          <span class="action-icon" style="background:#eff6ff; color:#3b82f6;">
+            <i class="bi bi-plus-lg"></i>
+          </span>
+          Add Device
+        </a>
+        <a href="{% url 'users:add' %}" class="action-btn">
+          <span class="action-icon" style="background:#f5f3ff; color:#8b5cf6;">
+            <i class="bi bi-person-plus"></i>
+          </span>
+          Add User
+        </a>
+        <a href="{% url 'server:create_choice' %}" class="action-btn">
+          <span class="action-icon" style="background:#ecfdf5; color:#10b981;">
+            <i class="bi bi-cloud-plus"></i>
+          </span>
+          Add Server
+        </a>
+        <a href="{% url 'users:departments' %}" class="action-btn">
+          <span class="action-icon" style="background:#fffbeb; color:#f59e0b;">
+            <i class="bi bi-diagram-3"></i>
+          </span>
+          Manage Departments
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

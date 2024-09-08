@@ -12,4 +12,5 @@ urlpatterns = [
     path('<uuid:pk>/enable/',      views.device_enable,  name='enable'),
     path('<uuid:pk>/disable/',     views.device_disable, name='disable'),
     path('<uuid:pk>/revoke/',      views.device_revoke,  name='revoke'),
+    path('<uuid:pk>/traffic/',     views.device_traffic, name='traffic'),
 ]

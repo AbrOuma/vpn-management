@@ -4,11 +4,6 @@ from django.utils import timezone
 
 
 class AccountManager(BaseUserManager):
-    """
-    Tells Django how to create users for our custom Account model.
-    We use email as the username instead of a username field.
-    """
-
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('Email address is required')
@@ -26,16 +21,10 @@ class AccountManager(BaseUserManager):
 
 
 class Account(AbstractBaseUser, PermissionsMixin):
-    """
-    Custom admin user model.
-    Replaces Django's built-in User model.
-    Uses email instead of username.
-    """
-
     class Role(models.TextChoices):
-        SUPER_ADMIN   = 'super_admin',   'Super Admin'    # Full access
-        NETWORK_ADMIN = 'network_admin', 'Network Admin'  # Add/remove peers
-        READ_ONLY     = 'read_only',     'Read Only'      # View only
+        SUPER_ADMIN   = 'super_admin',   'Super Admin'
+        NETWORK_ADMIN = 'network_admin', 'Network Admin'
+        READ_ONLY     = 'read_only',     'Read Only'
 
     email      = models.EmailField(unique=True)
     full_name  = models.CharField(max_length=150)
@@ -50,7 +39,6 @@ class Account(AbstractBaseUser, PermissionsMixin):
 
     objects = AccountManager()
 
-    # Use email to log in instead of username
     USERNAME_FIELD  = 'email'
     REQUIRED_FIELDS = ['full_name']
 
@@ -63,44 +51,18 @@ class Account(AbstractBaseUser, PermissionsMixin):
 
     @property
     def can_write(self):
-        """Returns True if this admin can make changes."""
         return self.role in (self.Role.SUPER_ADMIN, self.Role.NETWORK_ADMIN)
 
 
 class AuditLog(models.Model):
-    """
-    An immutable record of every action taken on the platform.
-    Who did what, and when.
-    Never delete audit log entries.
-    """
-
-    class Action(models.TextChoices):
-        PEER_ADDED    = 'peer_added',    'Peer Added'
-        PEER_REMOVED  = 'peer_removed',  'Peer Removed'
-        PEER_ENABLED  = 'peer_enabled',  'Peer Enabled'
-        PEER_DISABLED = 'peer_disabled', 'Peer Disabled'
-        PEER_REVOKED  = 'peer_revoked',  'Peer Revoked'
-        USER_CREATED  = 'user_created',  'User Created'
-        USER_DELETED  = 'user_deleted',  'User Deleted'
-        INVITE_SENT   = 'invite_sent',   'Invite Sent'
-        INVITE_USED   = 'invite_used',   'Invite Used'
-        CONFIG_SYNCED = 'config_synced', 'Config Synced'
-        IMPORT_RUN    = 'import_run',    'Import Run'
-        LOGIN         = 'login',         'Login'
-
-    account    = models.ForeignKey(
-                    Account,
-                    null=True,
-                    on_delete=models.SET_NULL
-                )
-    action     = models.CharField(max_length=30, choices=Action.choices)
-    target     = models.CharField(max_length=255, blank=True)
-    detail     = models.TextField(blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    timestamp  = models.DateTimeField(default=timezone.now)
+    actor     = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
+    action    = models.CharField(max_length=100)
+    target    = models.CharField(max_length=255)
+    detail    = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f'[{self.timestamp:%Y-%m-%d %H:%M}] {self.action} by {self.account}'
+        return f'{self.actor} - {self.action} - {self.timestamp}'

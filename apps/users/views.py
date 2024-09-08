@@ -4,6 +4,7 @@ from django.db import models
 from django import forms
 from .models import VPNUser, Department
 from apps.accounts.decorators import staff_required, write_required
+from apps.accounts.utils import log_action
 
 
 class VPNUserForm(forms.ModelForm):
@@ -36,6 +37,7 @@ def user_add(request):
         form = VPNUserForm(request.POST)
         if form.is_valid():
             vpnuser = form.save()
+            log_action(request, 'User Created', vpnuser.full_name, f'Email: {vpnuser.email}')
             messages.success(request, f'User "{vpnuser.full_name}" created.')
             return redirect('users:detail', pk=vpnuser.pk)
 
@@ -60,6 +62,7 @@ def user_suspend(request, pk):
     if request.method == 'POST':
         vpnuser.status = VPNUser.Status.SUSPENDED
         vpnuser.save(update_fields=['status', 'updated_at'])
+        log_action(request, 'User Suspended', vpnuser.full_name)
         messages.warning(request, f'{vpnuser.full_name} has been suspended.')
     return redirect('users:detail', pk=pk)
 
@@ -71,6 +74,7 @@ def user_activate(request, pk):
     if request.method == 'POST':
         vpnuser.status = VPNUser.Status.ACTIVE
         vpnuser.save(update_fields=['status', 'updated_at'])
+        log_action(request, 'User Activated', vpnuser.full_name)
         messages.success(request, f'{vpnuser.full_name} has been activated.')
     return redirect('users:detail', pk=pk)
 
@@ -81,6 +85,7 @@ def user_delete(request, pk):
     user = get_object_or_404(VPNUser, pk=pk)
     if request.method == 'POST':
         name = user.full_name
+        log_action(request, 'User Deleted', name)
         user.delete()
         messages.success(request, f'User "{name}" deleted.')
         return redirect('users:list')
@@ -105,6 +110,7 @@ def department_add(request):
         if name:
             dept, created = Department.objects.get_or_create(name=name)
             if created:
+                log_action(request, 'Department Created', name)
                 messages.success(request, f'Department "{name}" added.')
             else:
                 messages.warning(request, f'"{name}" already exists.')
@@ -117,6 +123,7 @@ def department_delete(request, pk):
     if request.method == 'POST':
         dept = get_object_or_404(Department, pk=pk)
         name = dept.name
+        log_action(request, 'Department Deleted', name)
         dept.delete()
         messages.success(request, f'Department "{name}" deleted.')
     return redirect('users:departments')

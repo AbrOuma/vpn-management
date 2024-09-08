@@ -1,5 +1,7 @@
 import logging
 from .ssh_client import run_command, write_remote_script
+from datetime import datetime, timezone as tz
+
 
 logger = logging.getLogger('wireguard')
 
@@ -97,7 +99,7 @@ def parse_wg_dump(dump_output: str) -> dict:
         peers[public_key] = {
             'endpoint':       parts[2],
             'allowed_ips':    parts[3],
-            'last_handshake': int(parts[4]) if parts[4] != '0' else None,
+            'last_handshake': datetime.fromtimestamp(int(parts[4]), tz=tz.utc) if parts[4] != '0' else None,
             'bytes_received': int(parts[5]),
             'bytes_sent':     int(parts[6]),
         }

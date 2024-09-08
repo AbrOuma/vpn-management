@@ -1,12 +1,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex">
+<div class="d-flex" style="height: 100vh; overflow: hidden;">
 
-    <div class="sidebar p-2" style="width: 240px; min-width: 240px;">
+    <div class="sidebar p-2" style="width: 240px; min-width: 240px; height: 100vh; overflow-y: auto; position: sticky; top: 0;">
         <div class="brand">
             <i class="bi bi-shield-lock"></i> WG Manager
         </div>
+
+        <a href="{% url 'accounts:dashboard' %}"
+           class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+        </a>
 
         <a href="{% url 'devices:list' %}"
            class="{% if request.resolver_match.app_name == 'devices' %}active{% endif %}">
@@ -51,11 +56,11 @@
         </a>
     </div>
 
-    <div class="flex-grow-1 main-content">
+    <div class="flex-grow-1 main-content" style="height: 100vh; overflow-y: auto;">
 
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show m-3">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>

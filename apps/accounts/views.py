@@ -1,3 +1,6 @@
+from apps.devices.models import Device
+from apps.users.models import VPNUser
+from apps.server.models import ServerConfig
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib import messages
@@ -7,6 +10,7 @@ from django import forms
 from rest_framework.authtoken.models import Token
 from .decorators import staff_required, superuser_required
 from .models import Account
+from .utils import log_action
 
 User = get_user_model()
 
@@ -60,7 +64,7 @@ class AdminForm(forms.ModelForm):
 def login_view(request):
     if request.user.is_authenticated:
         if request.user.is_staff:
-            return redirect('devices:list')
+            return redirect('accounts:dashboard')
         return redirect('portal:login')
 
     form = LoginForm()
@@ -76,7 +80,7 @@ def login_view(request):
                 login(request, user)
                 messages.success(request, f'Welcome back, {user.full_name}.')
                 if user.is_staff:
-                    return redirect('devices:list')
+                    return redirect('accounts:dashboard')
                 return redirect('portal:login')
             else:
                 messages.error(request, 'Invalid email or password.')
@@ -107,9 +111,15 @@ def settings_view(request):
             if u.pk != request.user.pk
         ]
 
+    audit_logs = None
+    if request.user.is_superuser:
+        from .models import AuditLog
+        audit_logs = AuditLog.objects.select_related('actor').all()[:100]
+
     return render(request, 'accounts/settings.html', {
-        'token': token,
+        'token':       token,
         'user_tokens': user_tokens,
+        'audit_logs':  audit_logs,
     })
 
 
@@ -118,6 +128,7 @@ def settings_view(request):
 def token_generate(request):
     Token.objects.filter(user=request.user).delete()
     Token.objects.create(user=request.user)
+    log_action(request, 'API Token Generated', request.user.email)
     messages.success(request, 'API token generated successfully.')
     return redirect('accounts:settings')
 
@@ -126,6 +137,7 @@ def token_generate(request):
 @require_POST
 def token_revoke(request):
     Token.objects.filter(user=request.user).delete()
+    log_action(request, 'API Token Revoked', request.user.email)
     messages.success(request, 'API token revoked.')
     return redirect('accounts:settings')
 
@@ -138,6 +150,7 @@ def admin_token_revoke(request, user_id):
         return redirect('accounts:settings')
     target_user = get_object_or_404(User, pk=user_id)
     Token.objects.filter(user=target_user).delete()
+    log_action(request, 'API Token Revoked', target_user.email, f'Revoked by {request.user.full_name}')
     messages.success(request, f'Token revoked for {target_user.email}.')
     return redirect('accounts:settings')
 
@@ -158,6 +171,7 @@ def admin_add(request):
             account.is_staff = True
             account.is_superuser = account.role == Account.Role.SUPER_ADMIN
             account.save()
+            log_action(request, 'Admin Created', account.full_name, f'Role: {account.role}')
             messages.success(request, f'Admin "{account.full_name}" created.')
             return redirect('accounts:admin_list')
     return render(request, 'accounts/admin_form.html', {'form': form, 'action': 'Add'})
@@ -174,6 +188,7 @@ def admin_edit(request, pk):
             account.is_staff = True
             account.is_superuser = account.role == Account.Role.SUPER_ADMIN
             account.save()
+            log_action(request, 'Admin Updated', account.full_name, f'Role: {account.role}')
             messages.success(request, f'Admin "{account.full_name}" updated.')
             return redirect('accounts:admin_list')
     return render(request, 'accounts/admin_form.html', {'form': form, 'action': 'Edit'})
@@ -188,6 +203,7 @@ def admin_deactivate(request, pk):
         return redirect('accounts:admin_list')
     account.is_active = False
     account.save(update_fields=['is_active'])
+    log_action(request, 'Admin Deactivated', account.full_name)
     messages.warning(request, f'{account.full_name} has been deactivated.')
     return redirect('accounts:admin_list')
 
@@ -198,6 +214,7 @@ def admin_activate(request, pk):
     account = get_object_or_404(Account, pk=pk)
     account.is_active = True
     account.save(update_fields=['is_active'])
+    log_action(request, 'Admin Activated', account.full_name)
     messages.success(request, f'{account.full_name} has been activated.')
     return redirect('accounts:admin_list')
 
@@ -213,8 +230,30 @@ def admin_delete(request, pk):
         messages.error(request, 'Superuser accounts cannot be deleted.')
         return redirect('accounts:admin_list')
     name = account.full_name
+    log_action(request, 'Admin Deleted', name)
     account.delete()
     messages.success(request, f'Admin "{name}" deleted.')
     return redirect('accounts:admin_list')
 
 
+@staff_required
+def dashboard_home(request):
+    servers        = ServerConfig.objects.count()
+    total          = Device.objects.count()
+    active         = Device.objects.filter(status=Device.Status.ACTIVE).count()
+    disabled       = Device.objects.filter(status=Device.Status.DISABLED).count()
+    revoked        = Device.objects.filter(status=Device.Status.REVOKED).count()
+    total_users    = VPNUser.objects.count()
+    recent_devices = Device.objects.select_related('user').order_by('-id')[:8]
+    server_list    = ServerConfig.objects.all()
+
+    return render(request, 'accounts/dashboard.html', {
+        'servers':        servers,
+        'total':          total,
+        'active':         active,
+        'disabled':       disabled,
+        'revoked':        revoked,
+        'total_users':    total_users,
+        'recent_devices': recent_devices,
+        'server_list':    server_list,
+    })

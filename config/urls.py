@@ -4,8 +4,7 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/dashboard/', permanent=False), name='home'),
-    path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(url='/accounts/dashboard/', permanent=False), name='home'),    path('admin/', admin.site.urls),
     path('accounts/', include('apps.accounts.urls')),
     path('dashboard/', include('apps.devices.urls')),
     path('users/', include('apps.users.urls')),

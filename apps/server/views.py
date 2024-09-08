@@ -5,6 +5,7 @@ from django.views.decorators.http import require_POST
 from django import forms
 from .models import ServerConfig, IPAllocation
 from apps.accounts.decorators import staff_required, write_required
+from apps.accounts.utils import log_action
 
 
 # Forms
@@ -140,7 +141,7 @@ class ProvisionAWSForm(forms.Form):
     aws_secret_key = forms.CharField(max_length=200, label='AWS Secret Access Key', widget=forms.PasswordInput())
     aws_region     = forms.ChoiceField(choices=AWS_REGIONS, label='Region')
     instance_type  = forms.ChoiceField(choices=AWS_INSTANCE_TYPES, label='Instance Type')
-    ssh_user = forms.CharField(max_length=100, label='SSH User', initial='ubuntu', help_text='Default user on Ubuntu EC2 is ubuntu')
+    ssh_user       = forms.CharField(max_length=100, label='SSH User', initial='ubuntu', help_text='Default user on Ubuntu EC2 is ubuntu')
     interface_name = forms.CharField(max_length=15, label='Interface Name', initial='wg0')
     listen_port    = forms.IntegerField(label='Listen Port', initial=51820)
     vpn_subnet     = forms.CharField(max_length=20, label='VPN Subnet', initial='10.0.0.0/24')
@@ -178,6 +179,7 @@ def server_add(request):
                 from wireguard.key_manager import encrypt
                 server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
             server.save()
+            log_action(request, 'Server Added', server.name, f'Host: {server.ssh_host}')
             messages.success(request, f'Server "{server.name}" added.')
             return redirect('server:list')
     return render(request, 'server/setup.html', {'form': form, 'title': 'Add Server'})
@@ -205,6 +207,7 @@ def server_setup(request, pk):
                 from wireguard.key_manager import encrypt
                 server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
             server.save()
+            log_action(request, 'Server Updated', server.name)
             messages.success(request, 'Server configuration saved.')
             return redirect('server:overview', pk=pk)
 
@@ -254,6 +257,7 @@ def repopulate_ip_pool(request, pk):
         deleted   = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).delete()[0]
         allocator = IPAllocator(server)
         created   = allocator.populate_pool()
+        log_action(request, 'IP Pool Repopulated', server.name, f'{deleted} removed, {created} added')
         messages.success(request, f'IP pool updated. {deleted} removed, {created} added.')
     return redirect('server:overview', pk=pk)
 
@@ -366,6 +370,7 @@ def import_commit(request, pk):
             imported += 1
 
     del request.session[f'import_config_{pk}']
+    log_action(request, 'Devices Imported', server.name, f'{imported} imported, {skipped} skipped')
     messages.success(request, f'Import complete - {imported} imported, {skipped} skipped.')
     return redirect('devices:list')
 
@@ -378,6 +383,7 @@ def sync_server(request, pk):
         try:
             from wireguard.manager import WireGuardManager
             WireGuardManager(server).sync_all()
+            log_action(request, 'Server Synced', server.name)
             messages.success(request, 'All devices synced to WireGuard server.')
         except Exception as e:
             messages.error(request, f'Sync failed: {e}')
@@ -393,6 +399,7 @@ def server_health(request, pk):
             from wireguard.commands import wg_is_running, wg_up
             if not wg_is_running(server, server.interface_name):
                 wg_up(server, server.interface_name)
+                log_action(request, 'Server Restarted', server.name, 'WireGuard was down')
                 messages.success(request, 'WireGuard was down - successfully restarted.')
             else:
                 messages.info(request, 'WireGuard is already running.')
@@ -410,6 +417,7 @@ def server_delete(request, pk):
         name = server.name
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
+        log_action(request, 'Server Deleted', name, 'Removed from database only')
         server.delete()
         messages.success(request, f'Server "{name}" removed from database. VM is untouched.')
         return redirect('server:list')
@@ -431,6 +439,7 @@ def server_wipe_peers(request, pk):
             return redirect('server:overview', pk=pk)
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
+        log_action(request, 'Server Deleted', name, f'Peers wiped from VM - {removed} removed')
         server.delete()
         messages.success(request, f'Server "{name}" deleted. {removed} peers wiped from WireGuard on the VM.')
         return redirect('server:list')
@@ -486,6 +495,7 @@ def server_destroy_vm(request, pk):
 
         Device.objects.filter(server=server).delete()
         IPAllocation.objects.filter(server=server).delete()
+        log_action(request, 'Server Destroyed', name, 'VM permanently destroyed')
         server.delete()
         messages.success(request, f'Server "{name}" and its VM have been permanently destroyed.')
         return redirect('server:list')
@@ -532,6 +542,7 @@ def provision_existing(request):
                 server.ssh_key_encrypted = encrypt(ssh_key_file.read().decode('utf-8'))
                 server.save(update_fields=['ssh_key_encrypted'])
 
+            log_action(request, 'Server Provisioning Started', data['name'], f'Existing VM: {data["ssh_host"]}')
             WireGuardProvisioner(server).start_provision_existing_vm()
             return redirect('server:provisioning_progress', pk=server.pk)
 
@@ -565,6 +576,7 @@ def provision_gcp(request):
             )
 
             sa_json_str = data['service_account_json'].read().decode('utf-8')
+            log_action(request, 'Server Provisioning Started', data['name'], f'GCP zone: {data["gcp_zone"]}')
             WireGuardProvisioner(server).start_provision_gcp_vm(
                 project_id=data['gcp_project_id'],
                 zone=data['gcp_zone'],
@@ -601,6 +613,7 @@ def provision_aws(request):
                 provisioning_log='',
             )
 
+            log_action(request, 'Server Provisioning Started', data['name'], f'AWS region: {data["aws_region"]}')
             WireGuardProvisioner(server).start_provision_aws_vm(
                 region=data['aws_region'],
                 instance_type=data['instance_type'],
@@ -637,6 +650,7 @@ def ajax_sync(request, pk):
     try:
         from wireguard.manager import WireGuardManager
         WireGuardManager(server).sync_all()
+        log_action(request, 'Server Synced', server.name)
         return JsonResponse({'status': 'ok', 'message': 'All devices synced successfully.'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
@@ -651,6 +665,7 @@ def ajax_health(request, pk):
         from wireguard.commands import wg_is_running, wg_up
         if not wg_is_running(server, server.interface_name):
             wg_up(server, server.interface_name)
+            log_action(request, 'Server Restarted', server.name, 'WireGuard was down')
             return JsonResponse({'status': 'ok', 'message': 'WireGuard was down - restarted successfully.'})
         return JsonResponse({'status': 'ok', 'message': 'WireGuard is already running.'})
     except Exception as e:
@@ -669,6 +684,7 @@ def ajax_repopulate(request, pk):
         created     = allocator.populate_pool()
         ip_free     = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.FREE).count()
         ip_assigned = IPAllocation.objects.filter(server=server, status=IPAllocation.Status.ASSIGNED).count()
+        log_action(request, 'IP Pool Repopulated', server.name, f'{deleted} removed, {created} added')
         return JsonResponse({
             'status':      'ok',
             'message':     f'{deleted} old IPs removed, {created} new IPs added.',
