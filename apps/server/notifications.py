@@ -47,3 +47,24 @@ def notify_server_up(server):
         logger.info('Recovery alert sent for server %s to %s', server.name, emails)
     except Exception as e:
         logger.error('Failed to send recovery alert for %s: %s', server.name, e)
+
+
+def notify_device_disabled(device, last_handshake_str):
+    if not device.user or not device.user.email:
+        return
+
+    subject = f'[WireGuard Manager] Your device "{device.name}" has been disabled'
+    message = (
+        f'Hi {device.user.full_name},\n\n'
+        f'Your VPN device "{device.name}" (IP: {device.ip_address}) has been automatically '
+        f'disabled due to no activity in the last 30 days.\n\n'
+        f'Last handshake: {last_handshake_str}\n\n'
+        f'If you still need VPN access, please contact your administrator to re-enable it.\n\n'
+        f'This is an automated message from WG Manager.'
+    )
+
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [device.user.email], fail_silently=False)
+        logger.info('Device disabled notification sent to %s for device %s', device.user.email, device.name)
+    except Exception as e:
+        logger.error('Failed to send device disabled notification to %s: %s', device.user.email, e)

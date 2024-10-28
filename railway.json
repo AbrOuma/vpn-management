@@ -10,6 +10,10 @@
       {
         "schedule": "*/30 * * * *",
         "command": "python manage.py check_server_health"
+      },
+      {
+        "schedule": "0 3 * * *",
+        "command": "python manage.py expire_idle_devices"
       }
     ]
   }
