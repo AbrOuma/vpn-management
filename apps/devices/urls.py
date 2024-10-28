@@ -13,4 +13,6 @@ urlpatterns = [
     path('<uuid:pk>/disable/',     views.device_disable, name='disable'),
     path('<uuid:pk>/revoke/',      views.device_revoke,  name='revoke'),
     path('<uuid:pk>/traffic/',     views.device_traffic, name='traffic'),
+    path('bulk-action/',           views.device_bulk_action, name='bulk_action'),
+    path('status-poll/', views.device_status_poll, name='status_poll'),
 ]

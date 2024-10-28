@@ -5,6 +5,12 @@
   },
   "deploy": {
     "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT",
-    "restartPolicyType": "ON_FAILURE"
+    "restartPolicyType": "ON_FAILURE",
+    "cronJobs": [
+      {
+        "schedule": "*/30 * * * *",
+        "command": "python manage.py check_server_health"
+      }
+    ]
   }
 }

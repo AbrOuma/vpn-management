@@ -5,6 +5,9 @@ from .forms import DeviceForm, DeviceEditForm
 from .services import create_device
 from apps.accounts.decorators import staff_required, write_required
 from apps.accounts.utils import log_action
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+
 
 
 @staff_required
@@ -95,7 +98,6 @@ def device_detail(request, pk):
 
 @staff_required
 def device_traffic(request, pk):
-    from django.http import JsonResponse
     device = get_object_or_404(Device, pk=pk)
     try:
         from wireguard.commands import wg_show_dump, parse_wg_dump
@@ -103,13 +105,12 @@ def device_traffic(request, pk):
         peers   = parse_wg_dump(dump)
         data    = peers.get(device.public_key)
         if data:
-            from datetime import datetime, timezone as tz
             lh = data['last_handshake']
             return JsonResponse({
-                'bytes_received': data['bytes_received'],
-                'bytes_sent':     data['bytes_sent'],
-                'last_handshake': lh.strftime('%d %b %Y %H:%M') if lh else 'Never',
-                'endpoint':       data['endpoint'] or 'Not connected',
+                'bytes_received':    data['bytes_received'],
+                'bytes_sent':        data['bytes_sent'],
+                'last_handshake_ts': int(lh.timestamp()) if lh else None,
+                'endpoint':          data['endpoint'] or 'Not connected',
             })
     except Exception:
         pass
@@ -199,3 +200,84 @@ def device_delete(request, pk):
         return redirect('devices:list')
 
     return redirect('devices:detail', pk=pk)
+
+
+@staff_required
+@write_required
+@require_POST
+def device_bulk_action(request):
+    import json
+    action     = request.POST.get('action')
+    device_ids = request.POST.getlist('device_ids')
+
+    if not action or not device_ids:
+        return JsonResponse({'error': 'No action or devices selected.'}, status=400)
+
+    valid_actions = ['enable', 'disable', 'revoke']
+    if action not in valid_actions:
+        return JsonResponse({'error': 'Invalid action.'}, status=400)
+
+    devices = Device.objects.filter(pk__in=device_ids)
+    count   = devices.count()
+
+    if action == 'enable':
+        devices.update(status=Device.Status.ACTIVE)
+        log_action(request, 'Bulk Enable', f'{count} devices')
+    elif action == 'disable':
+        devices.update(status=Device.Status.DISABLED)
+        log_action(request, 'Bulk Disable', f'{count} devices')
+    elif action == 'revoke':
+        devices.update(status=Device.Status.REVOKED)
+        log_action(request, 'Bulk Revoke', f'{count} devices')
+
+    # Return updated statuses so the page can update badges in place
+    updated = {
+        str(d.pk): d.status
+        for d in Device.objects.filter(pk__in=device_ids)
+    }
+
+    return JsonResponse({'status': 'ok', 'count': count, 'action': action, 'updated': updated})
+
+
+@staff_required
+def device_status_poll(request):
+    from apps.server.models import ServerConfig
+    from wireguard.commands import ping_peers
+
+    servers = ServerConfig.objects.prefetch_related('devices__allocated_ip').all()
+
+    online_ips = set()
+    for server in servers:
+        try:
+            ip_list = [
+                d.ip_address
+                for d in server.devices.filter(status='active')
+                if d.ip_address
+            ]
+            results = ping_peers(server, ip_list)
+            online_ips.update(ip for ip, up in results.items() if up)
+        except Exception:
+            pass
+
+    devices_data = {}
+    for server in servers:
+        for device in server.devices.all():
+            status = device.status
+            if status == 'active' and device.ip_address in online_ips:
+                display = 'online'
+            else:
+                display = status
+            devices_data[str(device.pk)] = display
+
+    total    = sum(len(list(s.devices.all())) for s in servers)
+    active   = sum(1 for v in devices_data.values() if v in ('active', 'online'))
+    disabled = sum(1 for v in devices_data.values() if v == 'disabled')
+    online   = sum(1 for v in devices_data.values() if v == 'online')
+
+    return JsonResponse({
+        'devices':  devices_data,
+        'total':    total,
+        'active':   active,
+        'disabled': disabled,
+        'online':   online,
+    })

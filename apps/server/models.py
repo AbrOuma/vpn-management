@@ -123,3 +123,12 @@ class IPAllocation(models.Model):
 
     def __str__(self):
         return f'{self.ip_address} ({self.get_status_display()})'
+    
+class ServerHealthStatus(models.Model):
+    server     = models.OneToOneField(ServerConfig, on_delete=models.CASCADE, related_name='health_status')
+    is_up      = models.BooleanField(default=True)
+    checked_at = models.DateTimeField(auto_now=True)
+    alerted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.server.name} - {"UP" if self.is_up else "DOWN"}'
