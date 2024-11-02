@@ -2,7 +2,17 @@
 
 {% block title %}{{ vpnuser.full_name }} - WireGuard Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    .devices-table th.col-ip,
+    .devices-table td.col-ip { display: none; }
+}
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
+<div class="p-3 p-md-4">
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <a href="{% url 'users:list' %}" class="btn btn-sm btn-outline-secondary">
@@ -27,7 +37,7 @@
                     </tr>
                     <tr>
                         <td class="text-muted">Email</td>
-                        <td>{{ vpnuser.email }}</td>
+                        <td style="word-break: break-all;">{{ vpnuser.email }}</td>
                     </tr>
                     <tr>
                         <td class="text-muted">Department</td>
@@ -105,41 +115,46 @@
                     </a>
                 </div>
                 {% if devices %}
-                    <table class="table table-sm">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Name</th>
-                                <th>IP</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for device in devices %}
-                            <tr>
-                                <td>{{ device.name }}</td>
-                                <td><code>{{ device.ip_address }}</code></td>
-                                <td>
-                                    {% if device.is_online %}
-                                        <span class="badge bg-success">Online</span>
-                                    {% elif device.status == 'active' %}
-                                        <span class="badge bg-secondary">Active</span>
-                                    {% elif device.status == 'disabled' %}
-                                        <span class="badge bg-warning text-dark">Disabled</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Revoked</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{% url 'devices:detail' device.pk %}"
-                                       class="btn btn-sm btn-outline-secondary">
-                                        View
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm devices-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th class="col-ip">IP</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in devices %}
+                                <tr>
+                                    <td>
+                                        <div>{{ device.name }}</div>
+                                        <small class="text-muted d-md-none font-monospace">{{ device.ip_address }}</small>
+                                    </td>
+                                    <td class="col-ip"><code>{{ device.ip_address }}</code></td>
+                                    <td>
+                                        {% if device.is_online %}
+                                            <span class="badge bg-success">Online</span>
+                                        {% elif device.status == 'active' %}
+                                            <span class="badge bg-secondary">Active</span>
+                                        {% elif device.status == 'disabled' %}
+                                            <span class="badge bg-warning text-dark">Disabled</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Revoked</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'devices:detail' device.pk %}"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 {% else %}
                     <p class="text-muted text-center py-4">No devices yet.</p>
                 {% endif %}
@@ -195,4 +210,5 @@ document.querySelectorAll('form').forEach(function (form) {
 });
 </script>
 
+</div>
 {% endblock %}

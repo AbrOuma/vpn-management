@@ -1,8 +1,19 @@
 {% extends 'base_dashboard.html' %}
 
-{% block title %}Admins — WireGuard Manager{% endblock %}
+{% block title %}Admins -- WireGuard Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    .admins-table th.col-email,
+    .admins-table td.col-email { display: none; }
+}
+</style>
+{% endblock %}
 
 {% block dashboard_content %}
+<div class="p-3 p-md-4">
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Admins</h4>
     <a href="{% url 'accounts:admin_add' %}" class="btn btn-primary btn-sm">
@@ -11,12 +22,12 @@
 </div>
 
 <div class="card shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 admins-table">
             <thead class="table-light">
                 <tr>
                     <th class="ps-3">Name</th>
-                    <th>Email</th>
+                    <th class="col-email">Email</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th></th>
@@ -25,10 +36,13 @@
             <tbody>
                 {% for admin in admins %}
                 <tr>
-                    <td class="ps-3">{{ admin.full_name }}</td>
-                    <td class="text-muted small">{{ admin.email }}</td>
+                    <td class="ps-3">
+                        <div>{{ admin.full_name }}</div>
+                        <small class="text-muted d-md-none">{{ admin.email }}</small>
+                    </td>
+                    <td class="text-muted small col-email">{{ admin.email }}</td>
                     <td>
-                        <span class="badge 
+                        <span class="badge
                             {% if admin.role == 'network_admin' %}bg-primary
                             {% elif admin.role == 'read_only' %}bg-secondary
                             {% else %}bg-dark{% endif %}">
@@ -88,5 +102,7 @@
             </tbody>
         </table>
     </div>
+</div>
+
 </div>
 {% endblock %}

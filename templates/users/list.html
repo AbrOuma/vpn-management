@@ -2,14 +2,26 @@
 
 {% block title %}Users - WireGuard Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    .users-table th.col-email,
+    .users-table td.col-email,
+    .users-table th.col-dept,
+    .users-table td.col-dept { display: none; }
+}
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
+<div class="p-3 p-md-4">
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Users</h4>
         <small class="text-muted">VPN end-users and their devices</small>
     </div>
-    <a href="{% url 'users:add' %}" class="btn btn-dark">
+    <a href="{% url 'users:add' %}" class="btn btn-dark btn-sm">
         <i class="bi bi-plus-lg me-1"></i> Add User
     </a>
 </div>
@@ -30,13 +42,13 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 users-table">
             <thead class="table-light">
                 <tr>
                     <th class="ps-4">Name</th>
-                    <th>Email</th>
-                    <th>Department</th>
+                    <th class="col-email">Email</th>
+                    <th class="col-dept">Department</th>
                     <th>Devices</th>
                     <th>Status</th>
                     <th></th>
@@ -47,9 +59,10 @@
                 <tr>
                     <td class="ps-4">
                         <div class="fw-semibold">{{ vpnuser.full_name }}</div>
+                        <small class="text-muted d-md-none">{{ vpnuser.email }}</small>
                     </td>
-                    <td><small class="text-muted">{{ vpnuser.email }}</small></td>
-                    <td>
+                    <td class="col-email"><small class="text-muted">{{ vpnuser.email }}</small></td>
+                    <td class="col-dept">
                         {% if vpnuser.department %}
                             {{ vpnuser.department }}
                         {% else %}
@@ -70,7 +83,7 @@
                             <span class="badge bg-secondary">Deleted</span>
                         {% endif %}
                     </td>
-                    <td class="text-end pe-4">
+                    <td class="text-end pe-3">
                         <a href="{% url 'users:detail' vpnuser.pk %}"
                            class="btn btn-sm btn-outline-secondary">
                             View
@@ -91,4 +104,5 @@
     </div>
 </div>
 
+</div>
 {% endblock %}

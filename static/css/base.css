@@ -1,0 +1,24 @@
+body { background-color: #f8f9fa; }
+
+.sidebar { min-height: 100vh; background-color: #1a1a2e; }
+.sidebar a { color: #a0a0b0; text-decoration: none; display: block; padding: 10px 20px; border-radius: 6px; margin: 2px 0; }
+.sidebar a:hover, .sidebar a.active { background-color: #16213e; color: #ffffff; }
+.sidebar .brand { color: #ffffff; font-size: 1.2rem; font-weight: 700; padding: 20px; border-bottom: 1px solid #2a2a4a; margin-bottom: 10px; }
+
+.main-content { padding: 30px; }
+
+.status-online  { color: #28a745; }
+.status-offline { color: #6c757d; }
+
+/* ── Device Detail responsive ── */
+@media (max-width: 768px) {
+    .main-content { padding: 15px; }
+}
+
+/* ── Traffic stat cards responsive ── */
+@media (max-width: 576px) {
+    .row.g-3 > .col-md-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}

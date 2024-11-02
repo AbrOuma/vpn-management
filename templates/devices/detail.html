@@ -1,8 +1,22 @@
 {% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    /* Traffic stat cards: 2 per row on mobile */
+    .traffic-grid .col-md-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+</style>
+{% endblock %}
 
 {% block title %}{{ device.name }} - WireGuard Manager{% endblock %}
 
 {% block dashboard_content %}
+<div class="p-3 p-md-4">
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <a href="{% url 'devices:list' %}" class="btn btn-sm btn-outline-secondary">
@@ -132,8 +146,8 @@
                     </span>
                 </div>
 
-                <div class="row g-3">
-                    <div class="col-md-3">
+                <div class="row g-3 traffic-grid">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
                             <p class="text-muted small mb-1">
                                 <i class="bi bi-arrow-down-circle me-1 text-success"></i>Received
@@ -141,7 +155,7 @@
                             <p class="fw-bold fs-5 mb-0" style="color:#166534;" id="stat-received">-</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 rounded-3" style="background:#eff6ff;border:1px solid #bfdbfe;">
                             <p class="text-muted small mb-1">
                                 <i class="bi bi-arrow-up-circle me-1 text-primary"></i>Sent
@@ -149,7 +163,7 @@
                             <p class="fw-bold fs-5 mb-0" style="color:#1e40af;" id="stat-sent">-</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 rounded-3" style="background:#fafafa;border:1px solid #e5e7eb;">
                             <p class="text-muted small mb-1">
                                 <i class="bi bi-clock-history me-1"></i>Last Handshake
@@ -157,7 +171,7 @@
                             <p class="fw-bold mb-0 text-dark" style="font-size:0.85rem;" id="stat-handshake">-</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 rounded-3" style="background:#fafafa;border:1px solid #e5e7eb;">
                             <p class="text-muted small mb-1">
                                 <i class="bi bi-geo me-1"></i>Endpoint
@@ -292,63 +306,13 @@
     </div>
 </div>
 
-<script>
-document.querySelectorAll('.modal form').forEach(function (form) {
-    form.addEventListener('submit', function () {
-        const btn = form.querySelector('.modal-submit-btn');
-        if (!btn) return;
-        btn.querySelector('.spinner').classList.remove('d-none');
-        btn.querySelector('.btn-label').classList.add('d-none');
-        btn.disabled = true;
-    });
-});
-
+<script src="{% static 'js/modals.js' %}"></script>
 {% if device.status == 'active' %}
-function formatBytes(bytes) {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
-}
-
-function formatHandshake(ts) {
-    if (!ts) return 'Never';
-    const date = new Date(ts * 1000);
-    return date.toLocaleString(undefined, {
-        day:          '2-digit',
-        month:        'short',
-        year:         'numeric',
-        hour:         '2-digit',
-        minute:       '2-digit',
-        timeZoneName: 'short',
-    });
-}
-
-function fetchTraffic() {
-    fetch("{% url 'devices:traffic' device.pk %}")
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                document.getElementById('traffic-status').textContent = 'Unavailable';
-                document.getElementById('pulse').style.background = '#ef4444';
-                return;
-            }
-            document.getElementById('stat-received').textContent  = formatBytes(data.bytes_received);
-            document.getElementById('stat-sent').textContent      = formatBytes(data.bytes_sent);
-            document.getElementById('stat-handshake').textContent = formatHandshake(data.last_handshake_ts);
-            document.getElementById('stat-endpoint').textContent  = data.endpoint;
-            document.getElementById('traffic-status').textContent = 'Live';
-            document.getElementById('pulse').style.background     = '#10b981';
-        })
-        .catch(() => {
-            document.getElementById('traffic-status').textContent = 'Unavailable';
-            document.getElementById('pulse').style.background = '#ef4444';
-        });
-}
-
-fetchTraffic();
-setInterval(fetchTraffic, 10000);
-{% endif %}
+<script>
+    window.TRAFFIC_URL = "{% url 'devices:traffic' device.pk %}";
 </script>
+<script src="{% static 'js/device-detail.js' %}"></script>
+{% endif %}
 
+</div>
 {% endblock %}

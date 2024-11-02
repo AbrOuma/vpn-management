@@ -1,8 +1,28 @@
 {% extends 'base_dashboard.html' %}
+{% load static %}
 
 {% block title %}Settings -- WireGuard Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    .settings-wrap { padding: 1rem; }
+    /* Hide less important columns on mobile */
+    .tokens-table th.col-email,
+    .tokens-table td.col-email,
+    .tokens-table th.col-created,
+    .tokens-table td.col-created { display: none; }
+    .audit-table th.col-admin,
+    .audit-table td.col-admin,
+    .audit-table th.col-detail,
+    .audit-table td.col-detail { display: none; }
+}
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
+<div class="settings-wrap p-4">
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Settings</h4>
 </div>
@@ -10,7 +30,7 @@
 <div class="row g-4">
 
     <!-- Personal token card -->
-    <div class="col-lg-7">
+    <div class="col-12 col-lg-7">
         <div class="card shadow-sm">
             <div class="card-header bg-white py-3">
                 <h6 class="mb-0"><i class="bi bi-key me-2"></i>Your API Token</h6>
@@ -44,7 +64,7 @@
                         <div class="form-text">Created: {{ token.created }}</div>
                     </div>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
                         <form method="post" action="{% url 'accounts:token_generate' %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-warning btn-sm">
@@ -83,14 +103,14 @@
                 <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>User API Tokens</h6>
                 <span class="badge bg-secondary">Admin only</span>
             </div>
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-hover mb-0 tokens-table">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">User</th>
-                            <th>Email</th>
+                            <th class="col-email">Email</th>
                             <th>Token Status</th>
-                            <th>Created</th>
+                            <th class="col-created">Created</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -98,7 +118,7 @@
                         {% for entry in user_tokens %}
                         <tr>
                             <td class="ps-3">{{ entry.user.full_name }}</td>
-                            <td class="text-muted small">{{ entry.user.email }}</td>
+                            <td class="text-muted small col-email">{{ entry.user.email }}</td>
                             <td>
                                 {% if entry.token %}
                                     <span class="badge bg-success">Active</span>
@@ -106,7 +126,7 @@
                                     <span class="badge bg-light text-secondary">None</span>
                                 {% endif %}
                             </td>
-                            <td class="text-muted small">
+                            <td class="text-muted small col-created">
                                 {% if entry.token %}
                                     {{ entry.token.created|date:"M d, Y" }}
                                 {% else %}
@@ -120,7 +140,8 @@
                                         {% csrf_token %}
                                         <button type="submit"
                                                 class="btn btn-outline-danger btn-sm">
-                                            <i class="bi bi-trash me-1"></i> Revoke
+                                            <i class="bi bi-trash me-1"></i>
+                                            <span class="d-none d-md-inline">Revoke</span>
                                         </button>
                                     </form>
                                 {% endif %}
@@ -146,15 +167,15 @@
                 <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h6>
                 <span class="badge bg-secondary">Superadmin only</span>
             </div>
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-hover mb-0 audit-table">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">Timestamp</th>
-                            <th>Admin</th>
+                            <th class="col-admin">Admin</th>
                             <th>Action</th>
                             <th>Target</th>
-                            <th>Detail</th>
+                            <th class="col-detail">Detail</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -163,7 +184,7 @@
                             <td class="ps-3 text-muted small font-monospace" style="white-space: nowrap;">
                                 {{ log.timestamp|date:"M d, Y H:i" }}
                             </td>
-                            <td class="small">{{ log.actor.full_name|default:"Deleted user" }}</td>
+                            <td class="small col-admin">{{ log.actor.full_name|default:"Deleted user" }}</td>
                             <td>
                                 {% if 'Created' in log.action or 'Added' in log.action %}
                                     <span class="badge bg-success bg-opacity-10 text-success">{{ log.action }}</span>
@@ -178,7 +199,7 @@
                                 {% endif %}
                             </td>
                             <td class="small fw-medium">{{ log.target }}</td>
-                            <td class="text-muted small">{{ log.detail|default:"-" }}</td>
+                            <td class="text-muted small col-detail">{{ log.detail|default:"-" }}</td>
                         </tr>
                         {% empty %}
                         <tr>
@@ -201,28 +222,9 @@
     {% endif %}
 
 </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function toggleToken() {
-    const field = document.getElementById('tokenField');
-    const icon = document.getElementById('toggleIcon');
-    if (field.type === 'password') {
-        field.type = 'text';
-        icon.className = 'bi bi-eye-slash';
-    } else {
-        field.type = 'password';
-        icon.className = 'bi bi-eye';
-    }
-}
-
-function copyToken(token) {
-    navigator.clipboard.writeText(token).then(() => {
-        const icon = document.getElementById('copyIcon');
-        icon.className = 'bi bi-clipboard-check';
-        setTimeout(() => icon.className = 'bi bi-clipboard', 2000);
-    });
-}
-</script>
+<script src="{% static 'js/settings.js' %}"></script>
 {% endblock %}

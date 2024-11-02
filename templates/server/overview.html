@@ -1,4 +1,26 @@
 {% extends 'base_dashboard.html' %}
+{% load static %}
+{% block extra_css %}
+<style>
+@media (max-width: 768px) {
+    /* Stack header and buttons vertically */
+    .d-flex.justify-content-between.align-items-center.mb-3 {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+    .d-flex.gap-2.flex-wrap.justify-content-end {
+        justify-content: flex-start !important;
+        width: 100%;
+    }
+    /* Delete modal options stack vertically */
+    .modal .row.g-3 > .col-md-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+</style>
+{% endblock %}
 
 {% block title %}{{ server.name }} - WireGuard Manager{% endblock %}
 
@@ -295,7 +317,7 @@
                                                 Terminates <code>{{ server.gcp_instance_name }}</code>
                                                 in <code>{{ server.gcp_zone }}</code> entirely.
                                             {% endif %}
-                                            Removes everything — VM, WireGuard, peers, and database records.
+                                            Removes everything - VM, WireGuard, peers, and database records.
                                         </p>
                                     </div>
                                     <div class="mt-auto">
@@ -415,107 +437,9 @@
 </div>
 
 <script>
-(function () {
-    const resultBanner         = document.getElementById('actionResult');
-    const repopulateConfirmBtn = document.getElementById('repopulateConfirmBtn');
-
-    function showResult(message, isError) {
-        resultBanner.className   = 'alert mb-3 ' + (isError ? 'alert-danger' : 'alert-success');
-        resultBanner.textContent = message;
-        resultBanner.classList.remove('d-none');
-        setTimeout(() => resultBanner.classList.add('d-none'), 6000);
-    }
-
-    function updatePool(data) {
-        if (data.ip_free === undefined) return;
-        const total   = data.ip_free + data.ip_assigned;
-        const percent = total > 0 ? Math.round((data.ip_assigned / total) * 100) : 0;
-        document.querySelector('.ip-free').textContent     = data.ip_free;
-        document.querySelector('.ip-assigned').textContent = data.ip_assigned;
-        document.querySelector('.ip-total').textContent    = total;
-        document.querySelector('.ip-percent').textContent  = percent + '% of pool in use';
-        const bar = document.querySelector('.progress-bar');
-        if (bar) bar.style.width = percent + '%';
-    }
-
-    async function runAjax(url, btn) {
-        const spinner = btn.querySelector('.spinner');
-        const icon    = btn.querySelector('.btn-icon');
-        if (spinner) spinner.classList.remove('d-none');
-        if (icon)    icon.classList.add('d-none');
-        btn.disabled = true;
-
-        try {
-            const response = await fetch(url, {
-                method:  'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json',
-                },
-            });
-            const data = await response.json();
-            showResult(data.message, data.status !== 'ok');
-            updatePool(data);
-        } catch (err) {
-            showResult('Request failed - ' + err.message, true);
-        } finally {
-            if (spinner) spinner.classList.add('d-none');
-            if (icon)    icon.classList.remove('d-none');
-            btn.disabled = false;
-        }
-    }
-
-    document.querySelectorAll('.ajax-action').forEach(btn => {
-        btn.addEventListener('click', function () {
-            runAjax(this.dataset.url, this);
-        });
-    });
-
-    repopulateConfirmBtn.addEventListener('click', function () {
-        const modal = bootstrap.Modal.getInstance(
-            document.getElementById('repopulateConfirmModal')
-        );
-        if (modal) modal.hide();
-        runAjax('{% url "server:ajax_repopulate" server.pk %}', this);
-    });
-
-    document.querySelectorAll('.modal form').forEach(function (form) {
-        form.addEventListener('submit', function () {
-            const btn = form.querySelector('button[type="submit"]');
-            if (!btn) return;
-            btn.disabled  = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Working...';
-        });
-    });
-
-    const destroyForm = document.getElementById('destroyVmForm');
-    if (destroyForm) {
-        destroyForm.addEventListener('submit', function () {
-            const btn     = destroyForm.querySelector('.submit-btn');
-            const spinner = btn.querySelector('.spinner');
-            const label   = btn.querySelector('.btn-label');
-            spinner.classList.remove('d-none');
-            label.classList.add('d-none');
-            btn.disabled = true;
-        });
-    }
-
-    // DELETE confirmation input
-    const deleteInput   = document.getElementById('deleteConfirmInput');
-    const confirmedBtns = document.querySelectorAll('.confirmed-btn');
-
-    if (deleteInput) {
-        deleteInput.addEventListener('input', function () {
-            const confirmed = this.value === 'DELETE';
-            confirmedBtns.forEach(btn => btn.disabled = !confirmed);
-        });
-
-        document.getElementById('deleteServerModal').addEventListener('hidden.bs.modal', function () {
-            deleteInput.value = '';
-            confirmedBtns.forEach(btn => btn.disabled = true);
-        });
-    }
-})();
+    window.CSRF           = "{{ csrf_token }}";
+    window.REPOPULATE_URL = "{% url 'server:ajax_repopulate' server.pk %}";
 </script>
+<script src="{% static 'js/server-overview.js' %}"></script>
 
 {% endblock %}
