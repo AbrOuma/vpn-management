@@ -4,9 +4,29 @@
 
 {% block extra_css %}
 <style>
-@media (max-width: 768px) {
-    .admins-table th.col-email,
-    .admins-table td.col-email { display: none; }
+.admin-card {
+    background: #fff;
+    border: 1px solid #e8ecf2;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+}
+.admin-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.admin-card-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+.admin-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 </style>
 {% endblock %}
@@ -21,13 +41,14 @@
     </a>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body p-0 table-responsive">
-        <table class="table table-hover mb-0 admins-table">
+<!-- Desktop table -->
+<div class="card shadow-sm d-none d-md-block">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
             <thead class="table-light">
                 <tr>
                     <th class="ps-3">Name</th>
-                    <th class="col-email">Email</th>
+                    <th>Email</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th></th>
@@ -36,11 +57,8 @@
             <tbody>
                 {% for admin in admins %}
                 <tr>
-                    <td class="ps-3">
-                        <div>{{ admin.full_name }}</div>
-                        <small class="text-muted d-md-none">{{ admin.email }}</small>
-                    </td>
-                    <td class="text-muted small col-email">{{ admin.email }}</td>
+                    <td class="ps-3">{{ admin.full_name }}</td>
+                    <td class="text-muted small">{{ admin.email }}</td>
                     <td>
                         <span class="badge
                             {% if admin.role == 'network_admin' %}bg-primary
@@ -63,16 +81,14 @@
                                 <i class="bi bi-pencil"></i>
                             </a>
                             {% if admin.is_active %}
-                                <form method="post"
-                                      action="{% url 'accounts:admin_deactivate' admin.pk %}">
+                                <form method="post" action="{% url 'accounts:admin_deactivate' admin.pk %}">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-warning btn-sm">
                                         <i class="bi bi-pause-circle"></i>
                                     </button>
                                 </form>
                             {% else %}
-                                <form method="post"
-                                      action="{% url 'accounts:admin_activate' admin.pk %}">
+                                <form method="post" action="{% url 'accounts:admin_activate' admin.pk %}">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-success btn-sm">
                                         <i class="bi bi-play-circle"></i>
@@ -102,6 +118,68 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Mobile cards -->
+<div class="d-md-none">
+    {% for admin in admins %}
+    <div class="admin-card shadow-sm">
+        <div class="admin-card-row">
+            <div>
+                <div class="fw-semibold">{{ admin.full_name }}</div>
+                <small class="text-muted">{{ admin.email }}</small>
+            </div>
+            {% if admin.is_active %}
+                <span class="badge bg-success">Active</span>
+            {% else %}
+                <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+        </div>
+        <div class="admin-card-meta">
+            <span class="badge
+                {% if admin.role == 'network_admin' %}bg-primary
+                {% elif admin.role == 'read_only' %}bg-secondary
+                {% else %}bg-dark{% endif %}">
+                {{ admin.get_role_display }}
+            </span>
+        </div>
+        <div class="admin-card-actions">
+            <a href="{% url 'accounts:admin_edit' admin.pk %}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            {% if admin.is_active %}
+                <form method="post" action="{% url 'accounts:admin_deactivate' admin.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-pause-circle me-1"></i> Deactivate
+                    </button>
+                </form>
+            {% else %}
+                <form method="post" action="{% url 'accounts:admin_activate' admin.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-play-circle me-1"></i> Activate
+                    </button>
+                </form>
+            {% endif %}
+            {% if not admin.is_superuser %}
+                <form method="post"
+                      action="{% url 'accounts:admin_delete' admin.pk %}"
+                      onsubmit="return confirm('Delete {{ admin.full_name }}? This cannot be undone.')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-center text-muted py-4">
+        No admins found. <a href="{% url 'accounts:admin_add' %}">Add one</a>.
+    </p>
+    {% endfor %}
 </div>
 
 </div>

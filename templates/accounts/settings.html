@@ -5,23 +5,39 @@
 
 {% block extra_css %}
 <style>
-@media (max-width: 768px) {
-    .settings-wrap { padding: 1rem; }
-    /* Hide less important columns on mobile */
-    .tokens-table th.col-email,
-    .tokens-table td.col-email,
-    .tokens-table th.col-created,
-    .tokens-table td.col-created { display: none; }
-    .audit-table th.col-admin,
-    .audit-table td.col-admin,
-    .audit-table th.col-detail,
-    .audit-table td.col-detail { display: none; }
+.mobile-card {
+    background: #fff;
+    border: 1px solid #e8ecf2;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+}
+.mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.mobile-card-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+}
+.mobile-card-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8a94a6;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
 }
 </style>
 {% endblock %}
 
 {% block dashboard_content %}
-<div class="settings-wrap p-4">
+<div class="p-3 p-md-4">
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Settings</h4>
@@ -40,30 +56,22 @@
                     Use this token to authenticate API requests. Include it in the
                     <code>Authorization</code> header as <code>Token &lt;your_token&gt;</code>.
                 </p>
-
                 {% if token %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Your Token</label>
                         <div class="input-group">
-                            <input type="password"
-                                   id="tokenField"
+                            <input type="password" id="tokenField"
                                    class="form-control font-monospace"
-                                   value="{{ token.key }}"
-                                   readonly>
-                            <button class="btn btn-outline-secondary"
-                                    type="button"
-                                    onclick="toggleToken()">
+                                   value="{{ token.key }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="toggleToken()">
                                 <i class="bi bi-eye" id="toggleIcon"></i>
                             </button>
-                            <button class="btn btn-outline-secondary"
-                                    type="button"
-                                    onclick="copyToken('{{ token.key }}')">
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyToken('{{ token.key }}')">
                                 <i class="bi bi-clipboard" id="copyIcon"></i>
                             </button>
                         </div>
                         <div class="form-text">Created: {{ token.created }}</div>
                     </div>
-
                     <div class="d-flex gap-2 flex-wrap">
                         <form method="post" action="{% url 'accounts:token_generate' %}">
                             {% csrf_token %}
@@ -78,7 +86,6 @@
                             </button>
                         </form>
                     </div>
-
                 {% else %}
                     <div class="alert alert-secondary">
                         <i class="bi bi-info-circle me-2"></i>
@@ -103,14 +110,16 @@
                 <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>User API Tokens</h6>
                 <span class="badge bg-secondary">Admin only</span>
             </div>
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-hover mb-0 tokens-table">
+
+            <!-- Desktop table -->
+            <div class="card-body p-0 d-none d-md-block">
+                <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">User</th>
-                            <th class="col-email">Email</th>
+                            <th>Email</th>
                             <th>Token Status</th>
-                            <th class="col-created">Created</th>
+                            <th>Created</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -118,42 +127,64 @@
                         {% for entry in user_tokens %}
                         <tr>
                             <td class="ps-3">{{ entry.user.full_name }}</td>
-                            <td class="text-muted small col-email">{{ entry.user.email }}</td>
+                            <td class="text-muted small">{{ entry.user.email }}</td>
                             <td>
-                                {% if entry.token %}
-                                    <span class="badge bg-success">Active</span>
-                                {% else %}
-                                    <span class="badge bg-light text-secondary">None</span>
-                                {% endif %}
+                                {% if entry.token %}<span class="badge bg-success">Active</span>
+                                {% else %}<span class="badge bg-light text-secondary">None</span>{% endif %}
                             </td>
-                            <td class="text-muted small col-created">
-                                {% if entry.token %}
-                                    {{ entry.token.created|date:"M d, Y" }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                            <td class="text-muted small">
+                                {% if entry.token %}{{ entry.token.created|date:"M d, Y" }}{% else %}-{% endif %}
                             </td>
                             <td class="text-end pe-3">
                                 {% if entry.token %}
-                                    <form method="post"
-                                          action="{% url 'accounts:admin_token_revoke' entry.user.pk %}">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="btn btn-outline-danger btn-sm">
-                                            <i class="bi bi-trash me-1"></i>
-                                            <span class="d-none d-md-inline">Revoke</span>
-                                        </button>
-                                    </form>
+                                <form method="post" action="{% url 'accounts:admin_token_revoke' entry.user.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash me-1"></i> Revoke
+                                    </button>
+                                </form>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted py-3">No other users found.</td>
-                        </tr>
+                        <tr><td colspan="5" class="text-center text-muted py-3">No other users found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile cards -->
+            <div class="card-body d-md-none">
+                {% for entry in user_tokens %}
+                <div class="mobile-card shadow-sm">
+                    <div class="mobile-card-row">
+                        <div>
+                            <div class="fw-semibold">{{ entry.user.full_name }}</div>
+                            <small class="text-muted">{{ entry.user.email }}</small>
+                        </div>
+                        {% if entry.token %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-light text-secondary border">None</span>
+                        {% endif %}
+                    </div>
+                    {% if entry.token %}
+                    <div class="mobile-card-meta">
+                        <small class="text-muted">Created: {{ entry.token.created|date:"M d, Y" }}</small>
+                    </div>
+                    <div class="mt-2">
+                        <form method="post" action="{% url 'accounts:admin_token_revoke' entry.user.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash me-1"></i> Revoke Token
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-center text-muted py-3 mb-0">No other users found.</p>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -167,15 +198,17 @@
                 <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h6>
                 <span class="badge bg-secondary">Superadmin only</span>
             </div>
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-hover mb-0 audit-table">
+
+            <!-- Desktop table -->
+            <div class="card-body p-0 d-none d-md-block">
+                <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">Timestamp</th>
-                            <th class="col-admin">Admin</th>
+                            <th>Admin</th>
                             <th>Action</th>
                             <th>Target</th>
-                            <th class="col-detail">Detail</th>
+                            <th>Detail</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -184,7 +217,7 @@
                             <td class="ps-3 text-muted small font-monospace" style="white-space: nowrap;">
                                 {{ log.timestamp|date:"M d, Y H:i" }}
                             </td>
-                            <td class="small col-admin">{{ log.actor.full_name|default:"Deleted user" }}</td>
+                            <td class="small">{{ log.actor.full_name|default:"Deleted user" }}</td>
                             <td>
                                 {% if 'Created' in log.action or 'Added' in log.action %}
                                     <span class="badge bg-success bg-opacity-10 text-success">{{ log.action }}</span>
@@ -199,7 +232,7 @@
                                 {% endif %}
                             </td>
                             <td class="small fw-medium">{{ log.target }}</td>
-                            <td class="text-muted small col-detail">{{ log.detail|default:"-" }}</td>
+                            <td class="text-muted small">{{ log.detail|default:"-" }}</td>
                         </tr>
                         {% empty %}
                         <tr>
@@ -212,6 +245,46 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile cards -->
+            <div class="card-body d-md-none">
+                {% for log in audit_logs %}
+                <div class="mobile-card shadow-sm">
+                    <div class="mobile-card-row">
+                        <div>
+                            {% if 'Created' in log.action or 'Added' in log.action %}
+                                <span class="badge bg-success bg-opacity-10 text-success">{{ log.action }}</span>
+                            {% elif 'Deleted' in log.action or 'Revoked' in log.action %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger">{{ log.action }}</span>
+                            {% elif 'Suspended' in log.action or 'Disabled' in log.action %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning">{{ log.action }}</span>
+                            {% elif 'Enabled' in log.action or 'Activated' in log.action %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary">{{ log.action }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ log.action }}</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted font-monospace" style="font-size: 0.7rem;">{{ log.timestamp|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <div class="mt-2">
+                        <div class="mobile-card-label">Target</div>
+                        <div class="small fw-medium">{{ log.target }}</div>
+                    </div>
+                    {% if log.detail %}
+                    <div class="mt-1">
+                        <div class="mobile-card-label">Detail</div>
+                        <div class="small text-muted">{{ log.detail }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="mt-1">
+                        <small class="text-muted">By {{ log.actor.full_name|default:"Deleted user" }}</small>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-center text-muted py-3 mb-0">No activity recorded yet.</p>
+                {% endfor %}
+            </div>
+
             {% if audit_logs|length == 100 %}
             <div class="card-footer bg-white text-muted small text-center py-2">
                 Showing the 100 most recent entries.

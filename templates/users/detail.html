@@ -4,9 +4,18 @@
 
 {% block extra_css %}
 <style>
-@media (max-width: 768px) {
-    .devices-table th.col-ip,
-    .devices-table td.col-ip { display: none; }
+.mobile-card {
+    background: #fff;
+    border: 1px solid #e8ecf2;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+}
+.mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>
 {% endblock %}
@@ -46,13 +55,9 @@
                     <tr>
                         <td class="text-muted">Status</td>
                         <td>
-                            {% if vpnuser.status == 'active' %}
-                                <span class="badge bg-success">Active</span>
-                            {% elif vpnuser.status == 'suspended' %}
-                                <span class="badge bg-warning text-dark">Suspended</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Deleted</span>
-                            {% endif %}
+                            {% if vpnuser.status == 'active' %}<span class="badge bg-success">Active</span>
+                            {% elif vpnuser.status == 'suspended' %}<span class="badge bg-warning text-dark">Suspended</span>
+                            {% else %}<span class="badge bg-secondary">Deleted</span>{% endif %}
                         </td>
                     </tr>
                     <tr>
@@ -61,10 +66,10 @@
                     </tr>
                 </table>
                 {% if vpnuser.notes %}
-                    <div class="mt-3">
-                        <small class="text-muted d-block mb-1">Notes</small>
-                        <p class="small">{{ vpnuser.notes }}</p>
-                    </div>
+                <div class="mt-3">
+                    <small class="text-muted d-block mb-1">Notes</small>
+                    <p class="small">{{ vpnuser.notes }}</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -78,9 +83,7 @@
                             {% csrf_token %}
                             <button class="btn btn-warning w-100 action-btn">
                                 <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
-                                <span class="btn-label">
-                                    <i class="bi bi-pause-circle me-2"></i>Suspend User
-                                </span>
+                                <span class="btn-label"><i class="bi bi-pause-circle me-2"></i>Suspend User</span>
                             </button>
                         </form>
                     {% elif vpnuser.status == 'suspended' %}
@@ -88,16 +91,12 @@
                             {% csrf_token %}
                             <button class="btn btn-success w-100 action-btn">
                                 <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
-                                <span class="btn-label">
-                                    <i class="bi bi-play-circle me-2"></i>Activate User
-                                </span>
+                                <span class="btn-label"><i class="bi bi-play-circle me-2"></i>Activate User</span>
                             </button>
                         </form>
                     {% endif %}
-                    <button type="button"
-                            class="btn btn-danger w-100"
-                            data-bs-toggle="modal"
-                            data-bs-target="#deleteUserModal">
+                    <button type="button" class="btn btn-danger w-100"
+                            data-bs-toggle="modal" data-bs-target="#deleteUserModal">
                         <i class="bi bi-trash me-2"></i>Delete User
                     </button>
                 </div>
@@ -114,50 +113,68 @@
                         <i class="bi bi-plus-lg me-1"></i>Add Device
                     </a>
                 </div>
+
                 {% if devices %}
-                    <div class="table-responsive">
-                        <table class="table table-sm devices-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Name</th>
-                                    <th class="col-ip">IP</th>
-                                    <th>Status</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for device in devices %}
-                                <tr>
-                                    <td>
-                                        <div>{{ device.name }}</div>
-                                        <small class="text-muted d-md-none font-monospace">{{ device.ip_address }}</small>
-                                    </td>
-                                    <td class="col-ip"><code>{{ device.ip_address }}</code></td>
-                                    <td>
-                                        {% if device.is_online %}
-                                            <span class="badge bg-success">Online</span>
-                                        {% elif device.status == 'active' %}
-                                            <span class="badge bg-secondary">Active</span>
-                                        {% elif device.status == 'disabled' %}
-                                            <span class="badge bg-warning text-dark">Disabled</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Revoked</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'devices:detail' device.pk %}"
-                                           class="btn btn-sm btn-outline-secondary">
-                                            View
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <!-- Desktop table -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>IP</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td>{{ device.name }}</td>
+                                <td><code>{{ device.ip_address }}</code></td>
+                                <td>
+                                    {% if device.is_online %}<span class="badge bg-success">Online</span>
+                                    {% elif device.status == 'active' %}<span class="badge bg-secondary">Active</span>
+                                    {% elif device.status == 'disabled' %}<span class="badge bg-warning text-dark">Disabled</span>
+                                    {% else %}<span class="badge bg-danger">Revoked</span>{% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'devices:detail' device.pk %}"
+                                       class="btn btn-sm btn-outline-secondary">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile cards -->
+                <div class="d-md-none">
+                    {% for device in devices %}
+                    <div class="mobile-card">
+                        <div class="mobile-card-row">
+                            <div>
+                                <div class="fw-semibold">{{ device.name }}</div>
+                                <small class="text-muted font-monospace">{{ device.ip_address }}</small>
+                            </div>
+                            {% if device.is_online %}<span class="badge bg-success">Online</span>
+                            {% elif device.status == 'active' %}<span class="badge bg-secondary">Active</span>
+                            {% elif device.status == 'disabled' %}<span class="badge bg-warning text-dark">Disabled</span>
+                            {% else %}<span class="badge bg-danger">Revoked</span>{% endif %}
+                        </div>
+                        <div class="mt-2">
+                            <a href="{% url 'devices:detail' device.pk %}"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-eye me-1"></i> View
+                            </a>
+                        </div>
                     </div>
+                    {% endfor %}
+                </div>
+
                 {% else %}
-                    <p class="text-muted text-center py-4">No devices yet.</p>
+                <p class="text-muted text-center py-4">No devices yet.</p>
                 {% endif %}
+
             </div>
         </div>
     </div>
@@ -180,15 +197,12 @@
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary"
-                        data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form method="post" action="{% url 'users:delete' vpnuser.pk %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger action-btn">
                         <span class="spinner d-none spinner-border spinner-border-sm me-1"></span>
-                        <span class="btn-label">
-                            <i class="bi bi-trash me-1"></i>Yes, Delete
-                        </span>
+                        <span class="btn-label"><i class="bi bi-trash me-1"></i>Yes, Delete</span>
                     </button>
                 </form>
             </div>
