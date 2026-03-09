@@ -11,7 +11,7 @@ db.sqlite3
 staticfiles/
 media/
 
-# SSH keys — NEVER commit these
+# SSH keys
 gcp_key
 gcp_key.pub
 railway_gcp_key
@@ -29,6 +29,6 @@ Thumbs.db
 *.log
 logs/
 
-#documentation
+# personal documentations
 
 DEPLOY.md
